@@ -1,4 +1,6 @@
-// ---------- auth + valuation (cookie session) ----------
+import type { Announcement, Company, SourceRecord } from './types'
+
+// ---------- market, auth + valuation (cookie session) ----------
 export class ApiError extends Error {
   status: number
   constructor(status: number, message: string) {
@@ -30,6 +32,15 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 
 const post = <T>(path: string, body?: unknown) =>
   request<T>(path, { method: 'POST', body: body === undefined ? undefined : JSON.stringify(body) })
+
+export interface MarketResponse {
+  companies: Company[]
+  announcements: Announcement[]
+  sources: SourceRecord[]
+  asOf?: string
+}
+
+export const fetchMarket = () => request<MarketResponse>('/api/market')
 
 export interface User {
   id: number
