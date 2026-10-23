@@ -6,15 +6,19 @@ Start:
 from __future__ import annotations
 
 import logging
+import os
 import time
+from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 from data import ANNOUNCEMENTS as MOCK_ANNOUNCEMENTS, SOURCES as MOCK_SOURCES, build_companies
 from news_service import process_pipeline_news
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 import auth
+import config
 import valuation
 from assistant import router as research_router
 from portfolio import router as portfolio_router
@@ -32,12 +36,8 @@ app = FastAPI(title="PSXviewAI API", version="0.2.0")
 # Allow the frontend dev servers (Vite) to call this backend with credentials.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173", "http://127.0.0.1:5173",
-        "http://localhost:5174", "http://127.0.0.1:5174",
-        "http://localhost:4173", "http://127.0.0.1:4173",
-    ],
-    allow_methods=["GET", "POST", "DELETE"],
+    allow_origins=config.CORS_ORIGINS,
+    allow_methods=["*"],
     allow_credentials=True,
     allow_headers=["*"],
 )
@@ -200,6 +200,17 @@ def market():
             "news": _CACHE["news_source"],
         },
     }
+
+
+# The production image builds React into /app/dist. Mounting after all API
+# routes keeps /api and the interactive API docs reachable while serving the
+# frontend and its assets from the same origin (important for session cookies).
+_default_frontend = Path(__file__).resolve().parent.parent / "dist"
+FRONTEND_DIST = Path(os.getenv("FRONTEND_DIST", str(_default_frontend)))
+if FRONTEND_DIST.is_dir():
+    app.mount("/", StaticFiles(directory=str(FRONTEND_DIST), html=True), name="frontend")
+else:
+    log.info("Frontend build not found at %s; API-only mode enabled", FRONTEND_DIST)
 
 
 if __name__ == "__main__":

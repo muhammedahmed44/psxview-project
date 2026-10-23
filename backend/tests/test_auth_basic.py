@@ -1,12 +1,11 @@
 """Basic tests for auth flows: register, login, OTP, and /me."""
 from __future__ import annotations
 
+import uuid
+
 from fastapi.testclient import TestClient
 
 from main import app
-
-
-client = TestClient(app)
 
 
 def test_register_and_login_flow(monkeypatch):
@@ -18,26 +17,36 @@ def test_register_and_login_flow(monkeypatch):
     def fake_send(email: str, code: str) -> None:
         sent.setdefault(email, []).append(code)
 
-    monkeypatch.setattr(emailer, "send_otp_email", fake_send)
+    monkeypatch.setattr(emailer, "send_otp", fake_send)
+
+    client = TestClient(app)
+    email = f"{uuid.uuid4().hex[:8]}@example.com"
 
     # Register
-    r = client.post("/api/auth/register", json={"email": "user@example.com", "password": "secret"})
-    assert r.status_code == 200
+    r = client.post(
+        "/api/auth/register",
+        json={"name": "Test User", "email": email, "password": "password1"},
+    )
+    assert r.status_code == 201
     challenge = r.json()["challenge_token"]
-    assert sent["user@example.com"]
-    code = sent["user@example.com"][0]
+    assert sent[email]
+    code = sent[email][0]
 
     # Verify OTP to establish session
-    r = client.post("/api/auth/verify-otp", json={"token": challenge, "code": code})
+    r = client.post(
+        "/api/auth/verify-otp",
+        json={"challenge_token": challenge, "code": code},
+    )
     assert r.status_code == 200
-    assert r.json()["email"] == "user@example.com"
+    assert r.json()["email"] == email
 
     # /me should now work with session cookie
     r = client.get("/api/auth/me")
     assert r.status_code == 200
-    assert r.json()["email"] == "user@example.com"
+    assert r.json()["email"] == email
 
 
 def test_me_requires_auth():
+    client = TestClient(app)
     r = client.get("/api/auth/me")
     assert r.status_code == 401

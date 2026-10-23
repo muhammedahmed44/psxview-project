@@ -65,6 +65,13 @@ news/documents, evidence items, valuations, and research conversations.
 
 The root `package.json` is the preview entry point and serves the existing React app from `frontend/src`. Run `npm install`, then `npm run dev`. The Vite proxy forwards `/api` requests to the FastAPI server on port 8000; the frontend also renders safely while that server is offline.
 
+## Deployment
+
+The repository includes a multi-stage Docker image that builds the React frontend
+and serves it with FastAPI from one origin. See [DEPLOY_RAILWAY.md](DEPLOY_RAILWAY.md)
+for Railway deployment, persistent SQLite storage, secrets, email, and health-check
+configuration.
+
 ## Frontend regeneration
 
 The first staged frontend pass refreshes the home market dashboard in `frontend/src/components/MarketSnapshot.tsx` and its visual refinements in `frontend/src/index.css`. It also adds a visual market-breadth progress indicator. Existing data hydration, ticker interactions, company cards, modal behavior, and API contracts remain unchanged. Continue to the next page only when requested.

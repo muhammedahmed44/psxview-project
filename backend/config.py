@@ -1,9 +1,12 @@
-"""All settings in one place. Values come from backend/.env (see .example.env)."""
+"""Application configuration loaded from environment variables or backend/.env."""
 import os
+from pathlib import Path
+
 from dotenv import load_dotenv
 
-# Load variables from a .env file if present. This must run before any setting is read.
-load_dotenv()
+# Resolve the local development file relative to this module. Railway injects
+# variables directly, and those values take precedence over this file.
+load_dotenv(Path(__file__).with_name(".env"))
 
 # Database connection string. Defaults to a local SQLite file in the backend folder.
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./psxviewai.db")
@@ -19,6 +22,20 @@ OTP_MAX_ATTEMPTS = 5              # wrong guesses allowed per code before it is 
 COOKIE_NAME = "psx_session"       # name of the browser cookie that holds the session token
 COOKIE_SECURE = os.getenv("COOKIE_SECURE", "0") == "1"   # set 1 when using https
 
+# Extra origins are only needed when the frontend is hosted separately. The
+# production Docker image serves it from FastAPI, so it remains same-origin.
+_LOCAL_ORIGINS = (
+    "http://localhost:5173,http://127.0.0.1:5173,"
+    "http://localhost:5174,http://127.0.0.1:5174,"
+    "http://localhost:4173,http://127.0.0.1:4173"
+)
+_cors_value = os.getenv("CORS_ORIGINS", "").strip() or _LOCAL_ORIGINS
+CORS_ORIGINS = [
+    origin.strip()
+    for origin in _cors_value.split(",")
+    if origin.strip()
+]
+
 # Email (optional). If SMTP_HOST is empty, codes are printed in the server log instead of sent.
 SMTP_HOST = os.getenv("SMTP_HOST", "")
 SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
@@ -26,7 +43,12 @@ SMTP_USER = os.getenv("SMTP_USER", "")
 SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
 SMTP_FROM = os.getenv("SMTP_FROM", "no-reply@psxviewai.local")
 
+# HTTPS email delivery works on Railway plans where outbound SMTP is blocked.
+# RESEND_FROM must use a sender/domain authorized in the Resend account.
+RESEND_API_KEY = os.getenv("RESEND_API_KEY", "").strip()
+RESEND_FROM = os.getenv("RESEND_FROM", "PSXviewAI <onboarding@resend.dev>").strip()
+
 # Google Gemini API key and model name, used for AI valuation explanations.
 # Stripped to avoid failures from accidental leading/trailing whitespace in .env.
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.8-flash").strip()
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.5-flash").strip()
