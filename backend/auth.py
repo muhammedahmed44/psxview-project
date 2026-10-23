@@ -1,4 +1,5 @@
-"""Register / login / 2FA / me / logout."""
+"""Register, login, authenticator-based 2FA, session, and logout routes."""
+import json
 from datetime import timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
@@ -7,81 +8,236 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 import config
-import emailer
 from db import get_db
 from models import OtpCode, User, utcnow
-from security import (hash_otp, hash_password, make_token, new_otp, read_token,
-                      same, verify_password)
+from security import (
+    decrypt_totp_secret,
+    encrypt_totp_secret,
+    hash_otp,
+    hash_password,
+    hash_recovery_code,
+    make_token,
+    matching_totp_counter,
+    new_recovery_codes,
+    new_totp_secret,
+    normalize_recovery_code,
+    read_token,
+    same,
+    totp_qr_data_url,
+    totp_uri,
+    verify_password,
+)
 
-# All auth routes live under /api/auth.
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
-# ---------- request / response shapes ----------
 class RegisterIn(BaseModel):
-    """Body for /api/auth/register."""
     name: str = Field(min_length=1, max_length=100)
     email: EmailStr
-    password: str = Field(min_length=8, max_length=72)   # 72 = bcrypt limit
+    password: str = Field(min_length=8, max_length=72)
 
 
 class LoginIn(BaseModel):
-    """Body for /api/auth/login."""
     email: EmailStr
     password: str = Field(min_length=1, max_length=72)
 
 
-class OtpIn(BaseModel):
-    """Body for /api/auth/verify-otp."""
+class AuthenticatorIn(BaseModel):
     challenge_token: str
-    code: str = Field(pattern=r"^\d{6}$")
+    code: str = Field(min_length=6, max_length=32)
 
 
 class ChallengeIn(BaseModel):
-    """Body for /api/auth/resend-otp."""
     challenge_token: str
 
 
 class UserOut(BaseModel):
-    """Public user information returned by /me and verify-otp."""
     id: int
     name: str
     email: str
 
 
-# ---------- helpers ----------
-def _issue_otp(db: Session, user: User) -> str:
-    """
-    Create a new OTP for a user and email it.
+class TotpSetupOut(BaseModel):
+    qr_code_data_url: str
+    manual_key: str
+    issuer: str = "PSXviewAI"
 
-    Older pending codes are invalidated first so only the newest code is valid.
-    Returns a short-lived challenge token used in /verify-otp.
-    """
-    for old in db.scalars(select(OtpCode).where(OtpCode.user_id == user.id, OtpCode.used == False)):  # noqa: E712
-        old.used = True
-    code = new_otp()
-    db.add(OtpCode(user_id=user.id, code_hash=hash_otp(code),
-                   expires_at=utcnow() + timedelta(minutes=config.OTP_MINUTES)))
-    db.commit()
-    emailer.send_otp(user.email, code)
-    return make_token(user.id, "challenge", config.OTP_MINUTES)
+
+class ChallengeOut(BaseModel):
+    challenge_token: str
+    requires_setup: bool
+    setup: TotpSetupOut | None = None
+
+
+class AuthOut(UserOut):
+    # Present exactly once, when authenticator enrollment is confirmed.
+    recovery_codes: list[str] | None = None
 
 
 def _aware(dt):
-    """
-    Ensure a datetime is timezone-aware.
-
-    SQLite returns naive datetimes from the DB; this treats them as UTC.
-    """
+    """SQLite returns naive datetimes; treat those values as UTC."""
     return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
 
 
-def get_current_user(request: Request, db: Session = Depends(get_db)) -> User:
-    """
-    Dependency: read the session cookie, validate it, and return the User row.
+def _set_no_store(response: Response) -> None:
+    response.headers["Cache-Control"] = "no-store"
 
-    Raises 401 if there is no cookie, it is invalid/expired, or the user no longer exists.
-    """
+
+def _secret_for(user: User, *, allow_regenerate: bool) -> str:
+    """Return the user's decrypted seed, creating one during enrollment."""
+    if user.totp_secret:
+        try:
+            return decrypt_totp_secret(user.totp_secret)
+        except ValueError:
+            if not allow_regenerate:
+                raise HTTPException(
+                    status_code=500,
+                    detail="Authenticator configuration is unavailable; contact support",
+                )
+
+    secret = new_totp_secret()
+    user.totp_secret = encrypt_totp_secret(secret)
+    user.totp_enabled = False
+    user.totp_last_counter = None
+    user.recovery_codes_hashes = None
+    return secret
+
+
+def _setup_payload(db: Session, user: User) -> TotpSetupOut:
+    secret = _secret_for(user, allow_regenerate=not user.totp_enabled)
+    db.commit()
+    uri = totp_uri(secret, user.email)
+    return TotpSetupOut(
+        qr_code_data_url=totp_qr_data_url(uri),
+        manual_key=secret,
+    )
+
+
+def _issue_challenge(db: Session, user: User) -> str:
+    """Create a single-use, attempt-limited challenge after password entry."""
+    for old in db.scalars(
+        select(OtpCode).where(OtpCode.user_id == user.id, OtpCode.used == False)  # noqa: E712
+    ):
+        old.used = True
+
+    token = make_token(user.id, "challenge", config.OTP_MINUTES)
+    db.add(
+        OtpCode(
+            user_id=user.id,
+            code_hash=hash_otp(token),
+            expires_at=utcnow() + timedelta(minutes=config.OTP_MINUTES),
+        )
+    )
+    db.commit()
+    return token
+
+
+def _start_authenticator_challenge(db: Session, user: User) -> ChallengeOut:
+    setup = None if user.totp_enabled else _setup_payload(db, user)
+    return ChallengeOut(
+        challenge_token=_issue_challenge(db, user),
+        requires_setup=not user.totp_enabled,
+        setup=setup,
+    )
+
+
+def _active_challenge(db: Session, user: User, token: str) -> OtpCode:
+    challenge = db.scalar(
+        select(OtpCode)
+        .where(OtpCode.user_id == user.id, OtpCode.used == False)  # noqa: E712
+        .order_by(OtpCode.id.desc())
+    )
+    if not challenge or not same(challenge.code_hash, hash_otp(token)):
+        raise HTTPException(status_code=401, detail="Login step expired, start again")
+    if _aware(challenge.expires_at) < utcnow():
+        challenge.used = True
+        db.commit()
+        raise HTTPException(status_code=401, detail="Login step expired, start again")
+    if challenge.attempts >= config.OTP_MAX_ATTEMPTS:
+        challenge.used = True
+        db.commit()
+        raise HTTPException(status_code=429, detail="Too many wrong codes, start login again")
+    return challenge
+
+
+def _reject_code(db: Session, challenge: OtpCode, detail: str = "Wrong code") -> None:
+    challenge.attempts += 1
+    db.commit()
+    raise HTTPException(status_code=400, detail=detail)
+
+
+def _stored_recovery_hashes(user: User) -> list[str]:
+    try:
+        value = json.loads(user.recovery_codes_hashes or "[]")
+    except json.JSONDecodeError:
+        return []
+    return [item for item in value if isinstance(item, str)]
+
+
+def _verify_authenticator(
+    body: AuthenticatorIn,
+    response: Response,
+    db: Session,
+) -> AuthOut:
+    uid = read_token(body.challenge_token, "challenge")
+    user = db.get(User, uid) if uid else None
+    if not user:
+        raise HTTPException(status_code=401, detail="Login step expired, start again")
+
+    challenge = _active_challenge(db, user, body.challenge_token)
+    code = body.code.strip()
+    recovery_codes: list[str] | None = None
+
+    if code.isdigit() and len(code) == 6:
+        secret = _secret_for(user, allow_regenerate=False)
+        counter = matching_totp_counter(secret, code)
+        if counter is None:
+            _reject_code(db, challenge)
+        if user.totp_last_counter is not None and counter <= user.totp_last_counter:
+            _reject_code(db, challenge, "Code already used; wait for the next code")
+
+        user.totp_last_counter = counter
+        if not user.totp_enabled:
+            recovery_codes = new_recovery_codes()
+            user.recovery_codes_hashes = json.dumps(
+                [hash_recovery_code(item) for item in recovery_codes]
+            )
+            user.totp_enabled = True
+    else:
+        if not user.totp_enabled or len(normalize_recovery_code(code)) != 10:
+            _reject_code(db, challenge)
+        candidate = hash_recovery_code(code)
+        stored = _stored_recovery_hashes(user)
+        matching_index = next(
+            (index for index, item in enumerate(stored) if same(item, candidate)),
+            None,
+        )
+        if matching_index is None:
+            _reject_code(db, challenge, "Invalid or already-used recovery code")
+        stored.pop(matching_index)
+        user.recovery_codes_hashes = json.dumps(stored)
+
+    challenge.used = True
+    db.commit()
+    response.set_cookie(
+        config.COOKIE_NAME,
+        make_token(user.id, "session", config.SESSION_MINUTES),
+        max_age=config.SESSION_MINUTES * 60,
+        httponly=True,
+        samesite="lax",
+        secure=config.COOKIE_SECURE,
+        path="/",
+    )
+    _set_no_store(response)
+    return AuthOut(
+        id=user.id,
+        name=user.name,
+        email=user.email,
+        recovery_codes=recovery_codes,
+    )
+
+
+def get_current_user(request: Request, db: Session = Depends(get_db)) -> User:
     token = request.cookies.get(config.COOKIE_NAME)
     uid = read_token(token, "session") if token else None
     user = db.get(User, uid) if uid else None
@@ -90,98 +246,63 @@ def get_current_user(request: Request, db: Session = Depends(get_db)) -> User:
     return user
 
 
-# ---------- routes ----------
-@router.post("/register", status_code=201)
-def register(body: RegisterIn, db: Session = Depends(get_db)):
-    """
-    Create a new account and start the 2FA email flow.
-
-    Returns a challenge token; the front end then calls /verify-otp with the 6-digit code.
-    """
+@router.post("/register", status_code=201, response_model=ChallengeOut)
+def register(body: RegisterIn, response: Response, db: Session = Depends(get_db)):
+    """Create an account and return its Google Authenticator enrollment QR."""
     email = body.email.lower()
     if db.scalar(select(User).where(User.email == email)):
         raise HTTPException(status_code=409, detail="Email already registered")
-    user = User(email=email, name=body.name.strip(), password_hash=hash_password(body.password))
+    user = User(
+        email=email,
+        name=body.name.strip(),
+        password_hash=hash_password(body.password),
+    )
     db.add(user)
     db.commit()
-    return {"challenge_token": _issue_otp(db, user)}
+    result = _start_authenticator_challenge(db, user)
+    _set_no_store(response)
+    return result
 
 
-@router.post("/login")
-def login(body: LoginIn, db: Session = Depends(get_db)):
-    """
-    Check credentials and start the 2FA email flow.
-
-    Returns the same challenge-token shape as register.
-    """
+@router.post("/login", response_model=ChallengeOut)
+def login(body: LoginIn, response: Response, db: Session = Depends(get_db)):
+    """Validate the password and start authenticator setup or verification."""
     user = db.scalar(select(User).where(User.email == body.email.lower()))
-    # Same error for "no such user" and "wrong password" so attackers learn nothing.
     if not user or not verify_password(body.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid email or password")
-    return {"challenge_token": _issue_otp(db, user)}
+    result = _start_authenticator_challenge(db, user)
+    _set_no_store(response)
+    return result
 
 
-@router.post("/resend-otp")
-def resend_otp(body: ChallengeIn, db: Session = Depends(get_db)):
-    """
-    Send a new OTP for an existing challenge token.
-
-    Useful when the code email is delayed or lost.
-    """
-    uid = read_token(body.challenge_token, "challenge")
-    user = db.get(User, uid) if uid else None
-    if not user:
-        raise HTTPException(status_code=401, detail="Login step expired, start again")
-    return {"challenge_token": _issue_otp(db, user)}
+@router.post("/verify-totp", response_model=AuthOut)
+def verify_totp(body: AuthenticatorIn, response: Response, db: Session = Depends(get_db)):
+    """Verify a Google Authenticator code (or one-time recovery code)."""
+    return _verify_authenticator(body, response, db)
 
 
-@router.post("/verify-otp", response_model=UserOut)
-def verify_otp(body: OtpIn, response: Response, db: Session = Depends(get_db)):
-    """
-    Verify the emailed 6-digit code and upgrade the challenge to a session.
+@router.post("/verify-otp", response_model=AuthOut, include_in_schema=False)
+def verify_otp_compat(body: AuthenticatorIn, response: Response, db: Session = Depends(get_db)):
+    """Compatibility alias for a frontend cached during rolling deployment."""
+    return _verify_authenticator(body, response, db)
 
-    On success, sets an HttpOnly session cookie and returns public user info.
-    """
-    uid = read_token(body.challenge_token, "challenge")
-    user = db.get(User, uid) if uid else None
-    if not user:
-        raise HTTPException(status_code=401, detail="Login step expired, start again")
 
-    # Fetch the newest unused OTP row for this user.
-    otp = db.scalar(select(OtpCode).where(OtpCode.user_id == user.id, OtpCode.used == False)  # noqa: E712
-                    .order_by(OtpCode.id.desc()))
-    if not otp or _aware(otp.expires_at) < utcnow():
-        raise HTTPException(status_code=400, detail="Code expired, request a new one")
-    if otp.attempts >= config.OTP_MAX_ATTEMPTS:
-        otp.used = True
-        db.commit()
-        raise HTTPException(status_code=429, detail="Too many wrong codes, request a new one")
-
-    # Increment attempts on mismatch so brute force is limited.
-    if not same(otp.code_hash, hash_otp(body.code)):
-        otp.attempts += 1
-        db.commit()
-        raise HTTPException(status_code=400, detail="Wrong code")
-
-    # Code is correct: mark it used and issue the session cookie.
-    otp.used = True
-    db.commit()
-    response.set_cookie(
-        config.COOKIE_NAME, make_token(user.id, "session", config.SESSION_MINUTES),
-        max_age=config.SESSION_MINUTES * 60, httponly=True, samesite="lax",
-        secure=config.COOKIE_SECURE, path="/",
+@router.post("/resend-otp", include_in_schema=False)
+def resend_otp_compat(body: ChallengeIn):
+    """Explain the removed email action to an older cached frontend."""
+    del body
+    raise HTTPException(
+        status_code=410,
+        detail="Authenticator codes refresh automatically every 30 seconds",
     )
-    return UserOut(id=user.id, name=user.name, email=user.email)
 
 
 @router.get("/me", response_model=UserOut)
 def me(user: User = Depends(get_current_user)):
-    """Return the currently logged-in user's public info."""
     return UserOut(id=user.id, name=user.name, email=user.email)
 
 
 @router.post("/logout")
 def logout(response: Response):
-    """Clear the session cookie."""
     response.delete_cookie(config.COOKIE_NAME, path="/")
     return {"ok": True}

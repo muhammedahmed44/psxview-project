@@ -37,6 +37,22 @@ export interface User {
   email: string
 }
 
+export interface AuthenticatorSetup {
+  qr_code_data_url: string
+  manual_key: string
+  issuer: string
+}
+
+export interface AuthChallenge {
+  challenge_token: string
+  requires_setup: boolean
+  setup: AuthenticatorSetup | null
+}
+
+export interface AuthResult extends User {
+  recovery_codes: string[] | null
+}
+
 // Market response used by the home dashboard. Keeping this call in the same
 // request helper preserves cookie credentials and the existing /api contract.
 export interface MarketPayload {
@@ -57,13 +73,11 @@ export const researchApi = {
 
 export const authApi = {
   register: (name: string, email: string, password: string) =>
-    post<{ challenge_token: string }>('/api/auth/register', { name, email, password }),
+    post<AuthChallenge>('/api/auth/register', { name, email, password }),
   login: (email: string, password: string) =>
-    post<{ challenge_token: string }>('/api/auth/login', { email, password }),
-  resendOtp: (challenge_token: string) =>
-    post<{ challenge_token: string }>('/api/auth/resend-otp', { challenge_token }),
-  verifyOtp: (challenge_token: string, code: string) =>
-    post<User>('/api/auth/verify-otp', { challenge_token, code }),
+    post<AuthChallenge>('/api/auth/login', { email, password }),
+  verifyTotp: (challenge_token: string, code: string) =>
+    post<AuthResult>('/api/auth/verify-totp', { challenge_token, code }),
   me: () => request<User>('/api/auth/me'),
   logout: () => post<{ ok: boolean }>('/api/auth/logout'),
 }

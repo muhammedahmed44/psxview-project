@@ -1,7 +1,7 @@
 """Database tables."""
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Text, Boolean
+from sqlalchemy import BigInteger, Boolean, DateTime, Float, ForeignKey, Integer, String, Text, false
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from db import Base
@@ -20,15 +20,24 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(254), unique=True, index=True)
     name: Mapped[str] = mapped_column(String(100))
     password_hash: Mapped[str] = mapped_column(String(100))
+    # The TOTP secret is encrypted with a key derived from JWT_SECRET. It must
+    # be recoverable (rather than hashed) so the server can verify future codes.
+    totp_secret: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    totp_enabled: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    # Reject a valid 30-second code after it has already been used successfully.
+    totp_last_counter: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    # Recovery codes are stored only as HMAC hashes in a JSON list.
+    recovery_codes_hashes: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
 class OtpCode(Base):
     """
-    One row per emailed 2FA code.
+    One row per password-validated MFA challenge.
 
-    We store a HASH of the code, never the plain code itself.
-    The hash is compared at verification time and the row is marked used.
+    ``code_hash`` now stores a hash of the signed challenge token. Keeping this
+    table preserves existing deployments while providing expiry, single-use,
+    and brute-force attempt tracking for authenticator codes.
     """
     __tablename__ = "otp_codes"
 

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { authApi } from '../api'
+import { authApi, type AuthenticatorSetup } from '../api'
 import { useAuth } from '../context/AuthContext'
 import type { AccountTab } from '../types'
 
@@ -9,7 +9,7 @@ interface Props {
   onClose: () => void
 }
 
-// Step 1 = email/password, step 2 = 6-digit email code, step 3 = done.
+// Step 1 = password, step 2 = authenticator setup/check, step 3 = signed in.
 export default function AccountModal({ open, tab, onClose }: Props) {
   const { setUser } = useAuth()
   const [step, setStep] = useState(1)
@@ -17,7 +17,11 @@ export default function AccountModal({ open, tab, onClose }: Props) {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [challenge, setChallenge] = useState('') // token from the server after step 1
+  const [challenge, setChallenge] = useState('')
+  const [setup, setSetup] = useState<AuthenticatorSetup | null>(null)
+  const [recoveryCodes, setRecoveryCodes] = useState<string[]>([])
+  const [useRecovery, setUseRecovery] = useState(false)
+  const [recoveryCode, setRecoveryCode] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const emailRef = useRef<HTMLInputElement>(null)
@@ -29,6 +33,11 @@ export default function AccountModal({ open, tab, onClose }: Props) {
       setCurTab(tab)
       setError('')
       setPassword('')
+      setChallenge('')
+      setSetup(null)
+      setRecoveryCodes([])
+      setUseRecovery(false)
+      setRecoveryCode('')
       requestAnimationFrame(() => emailRef.current?.focus())
     }
   }, [open, tab])
@@ -40,43 +49,57 @@ export default function AccountModal({ open, tab, onClose }: Props) {
     setError('')
     setBusy(true)
     try {
-      const res = isSignup
+      const result = isSignup
         ? await authApi.register(name, email, password)
         : await authApi.login(email, password)
-      setChallenge(res.challenge_token)
+      setChallenge(result.challenge_token)
+      setSetup(result.setup)
+      setUseRecovery(false)
       setStep(2)
       requestAnimationFrame(() => otpRefs.current[0]?.focus())
-    } catch (e) {
-      setError((e as Error).message)
+    } catch (caught) {
+      setError((caught as Error).message)
     } finally {
       setBusy(false)
     }
   }
 
   async function submitCode() {
-    const code = otpRefs.current.map((i) => i?.value ?? '').join('')
-    if (code.length !== 6) return setError('Enter all 6 digits')
+    const code = useRecovery
+      ? recoveryCode.trim()
+      : otpRefs.current.map((input) => input?.value ?? '').join('')
+    if ((!useRecovery && code.length !== 6) || (useRecovery && code.length < 10)) {
+      setError(useRecovery ? 'Enter a complete recovery code' : 'Enter all 6 digits')
+      return
+    }
     setError('')
     setBusy(true)
     try {
-      const user = await authApi.verifyOtp(challenge, code)
-      setUser(user) // the server already set the login cookie
+      const result = await authApi.verifyTotp(challenge, code)
+      setUser({ id: result.id, name: result.name, email: result.email })
+      setRecoveryCodes(result.recovery_codes ?? [])
       setStep(3)
-    } catch (e) {
-      setError((e as Error).message)
+    } catch (caught) {
+      setError((caught as Error).message)
     } finally {
       setBusy(false)
     }
   }
 
-  async function resend() {
-    setError('')
+  function pasteAuthenticatorCode(value: string) {
+    const digits = value.replace(/\D/g, '').slice(0, 6)
+    if (digits.length !== 6) return
+    otpRefs.current.forEach((input, index) => {
+      if (input) input.value = digits[index]
+    })
+    otpRefs.current[5]?.focus()
+  }
+
+  async function copyText(value: string) {
     try {
-      const res = await authApi.resendOtp(challenge)
-      setChallenge(res.challenge_token)
-      setError('New code sent.')
-    } catch (e) {
-      setError((e as Error).message)
+      await navigator.clipboard.writeText(value)
+    } catch {
+      setError('Could not copy automatically. Select and copy it manually.')
     }
   }
 
@@ -87,15 +110,15 @@ export default function AccountModal({ open, tab, onClose }: Props) {
       role="dialog"
       aria-modal="true"
       aria-label="Account"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose()
+      onClick={(event) => {
+        if (event.target === event.currentTarget) onClose()
       }}
     >
-      <div className="card">
+      <div className={`card${setup && step === 2 ? ' authenticator-card' : ''}`}>
         {step === 1 && (
           <form
-            onSubmit={(e) => {
-              e.preventDefault()
+            onSubmit={(event) => {
+              event.preventDefault()
               void submitCredentials()
             }}
           >
@@ -110,7 +133,7 @@ export default function AccountModal({ open, tab, onClose }: Props) {
             {isSignup && (
               <>
                 <label htmlFor="nm">Full name</label>
-                <input id="nm" autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} required />
+                <input id="nm" autoComplete="name" value={name} onChange={(event) => setName(event.target.value)} required />
               </>
             )}
             <label htmlFor="em">Email</label>
@@ -121,7 +144,7 @@ export default function AccountModal({ open, tab, onClose }: Props) {
               placeholder="you@example.com"
               ref={emailRef}
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(event) => setEmail(event.target.value)}
               required
             />
             <label htmlFor="pw">Password</label>
@@ -132,10 +155,10 @@ export default function AccountModal({ open, tab, onClose }: Props) {
               minLength={isSignup ? 8 : 1}
               maxLength={72}
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(event) => setPassword(event.target.value)}
               required
             />
-            {error && <p className="hint" role="alert" style={{ color: 'var(--down)' }}>{error}</p>}
+            {error && <p className="hint auth-error" role="alert">{error}</p>}
             <button className="btn prime" type="submit" disabled={busy}>
               {busy ? 'Please wait…' : isSignup ? 'Create account' : 'Login'}
             </button>
@@ -144,45 +167,111 @@ export default function AccountModal({ open, tab, onClose }: Props) {
 
         {step === 2 && (
           <div>
-            <h2 style={{ margin: '0 0 4px', fontSize: 20 }}>2-factor verification</h2>
-            <p className="hint">Enter the 6-digit code sent to your email.</p>
-            <div className="otp">
-              {Array.from({ length: 6 }).map((_, i) => (
+            <h2 className="auth-title">
+              {setup ? 'Set up Google Authenticator' : 'Authenticator verification'}
+            </h2>
+            {setup ? (
+              <div className="auth-setup">
+                <p className="hint">Scan this QR code with Google Authenticator, then enter the current 6-digit code.</p>
+                <img className="auth-qr" src={setup.qr_code_data_url} alt="Google Authenticator setup QR code" />
+                <p className="hint">Cannot scan it? Enter this setup key manually:</p>
+                <div className="manual-key">
+                  <code>{setup.manual_key}</code>
+                  <button type="button" onClick={() => void copyText(setup.manual_key)}>Copy</button>
+                </div>
+              </div>
+            ) : (
+              <p className="hint">
+                Enter the current 6-digit code from Google Authenticator.
+              </p>
+            )}
+
+            {!useRecovery ? (
+              <div className="otp">
+                {Array.from({ length: 6 }).map((_, index) => (
+                  <input
+                    key={index}
+                    maxLength={1}
+                    inputMode="numeric"
+                    autoComplete={index === 0 ? 'one-time-code' : 'off'}
+                    aria-label={`Digit ${index + 1}`}
+                    ref={(element) => {
+                      otpRefs.current[index] = element
+                    }}
+                    onPaste={(event) => {
+                      const pasted = event.clipboardData.getData('text')
+                      if (pasted.replace(/\D/g, '').length >= 6) {
+                        event.preventDefault()
+                        pasteAuthenticatorCode(pasted)
+                      }
+                    }}
+                    onChange={(event) => {
+                      event.target.value = event.target.value.replace(/\D/g, '').slice(-1)
+                      if (event.target.value && otpRefs.current[index + 1]) otpRefs.current[index + 1]!.focus()
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Backspace' && !event.currentTarget.value && otpRefs.current[index - 1])
+                        otpRefs.current[index - 1]!.focus()
+                      if (event.key === 'Enter') void submitCode()
+                    }}
+                  />
+                ))}
+              </div>
+            ) : (
+              <>
+                <label htmlFor="recovery">Recovery code</label>
                 <input
-                  key={i}
-                  maxLength={1}
-                  inputMode="numeric"
-                  aria-label={`Digit ${i + 1}`}
-                  ref={(el) => {
-                    otpRefs.current[i] = el
-                  }}
-                  onChange={(e) => {
-                    if (e.target.value && otpRefs.current[i + 1]) otpRefs.current[i + 1]!.focus()
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Backspace' && !e.currentTarget.value && otpRefs.current[i - 1])
-                      otpRefs.current[i - 1]!.focus()
-                    if (e.key === 'Enter') void submitCode()
+                  id="recovery"
+                  autoComplete="one-time-code"
+                  placeholder="XXXXX-XXXXX"
+                  value={recoveryCode}
+                  onChange={(event) => setRecoveryCode(event.target.value.toUpperCase())}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') void submitCode()
                   }}
                 />
-              ))}
-            </div>
-            {error && <p className="hint" role="alert" style={{ color: 'var(--down)' }}>{error}</p>}
+              </>
+            )}
+
+            {error && <p className="hint auth-error" role="alert">{error}</p>}
             <button className="btn prime" onClick={() => void submitCode()} disabled={busy}>
-              {busy ? 'Checking…' : 'Verify'}
+              {busy ? 'Checking…' : setup ? 'Confirm and sign in' : 'Verify'}
             </button>
-            <button type="button" className="linkbtn" onClick={() => void resend()}>
-              Send a new code
-            </button>
+            {!setup && (
+              <button
+                type="button"
+                className="linkbtn"
+                onClick={() => {
+                  setUseRecovery((current) => !current)
+                  setError('')
+                }}
+              >
+                {useRecovery ? 'Use authenticator code' : 'Use a recovery code'}
+              </button>
+            )}
           </div>
         )}
 
         {step === 3 && (
-          <div style={{ textAlign: 'center' }}>
-            <h2 style={{ margin: '0 0 4px', fontSize: 20 }}>Verified</h2>
-            <p className="hint">You are logged in.</p>
+          <div className="auth-complete">
+            <h2 className="auth-title">Verified</h2>
+            {recoveryCodes.length > 0 ? (
+              <>
+                <p className="hint">
+                  Save these recovery codes now. Each code works once if you lose access to your authenticator.
+                </p>
+                <div className="recovery-codes" aria-label="Recovery codes">
+                  {recoveryCodes.map((code) => <code key={code}>{code}</code>)}
+                </div>
+                <button type="button" className="linkbtn" onClick={() => void copyText(recoveryCodes.join('\n'))}>
+                  Copy all recovery codes
+                </button>
+              </>
+            ) : (
+              <p className="hint">You are logged in.</p>
+            )}
             <button className="btn prime" onClick={onClose}>
-              Close
+              {recoveryCodes.length > 0 ? 'I saved the codes' : 'Close'}
             </button>
           </div>
         )}

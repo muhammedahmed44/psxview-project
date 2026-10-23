@@ -773,6 +773,11 @@ h1 {
   width: 100%;
   max-width: 380px;
 }
+.card.authenticator-card {
+  max-width: 440px;
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+}
 .tabs {
   display: flex;
   background: var(--bg);
@@ -825,6 +830,66 @@ input {
 }
 .card .hint {
   margin: 6px 0 0;
+}
+.auth-title {
+  margin: 0 0 4px;
+  font-size: 20px;
+}
+.auth-error {
+  color: var(--down);
+}
+.auth-setup {
+  text-align: center;
+}
+.auth-qr {
+  display: block;
+  width: 190px;
+  height: 190px;
+  margin: 14px auto;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+}
+.manual-key {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg);
+}
+.manual-key code {
+  flex: 1;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+  letter-spacing: 0.05em;
+}
+.manual-key button {
+  border: 0;
+  background: none;
+  color: var(--blue);
+  font-weight: 700;
+  cursor: pointer;
+}
+.auth-complete {
+  text-align: center;
+}
+.recovery-codes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 14px 0 8px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--bg);
+}
+.recovery-codes code {
+  font-weight: 700;
+  letter-spacing: 0.06em;
 }
 #toast {
   position: fixed;

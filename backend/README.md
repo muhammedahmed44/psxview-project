@@ -35,6 +35,17 @@ here, so the frontend calls `/api/market` and it just works.
 
 Guest answers are temporary by design. Authenticated research is stored in the existing SQLite database and resets if that local file is removed.
 
+## Authentication
+
+- `POST /api/auth/register` creates an account and returns an authenticator setup QR.
+- `POST /api/auth/login` validates the password and starts the authenticator challenge.
+- `POST /api/auth/verify-totp` accepts an authenticator or one-time recovery code.
+
+Account 2FA uses Google Authenticator-compatible TOTP and does not require an
+email provider. On first registration/login, scan the QR and save the recovery
+codes shown after confirmation. Keep `JWT_SECRET` stable because it is also used
+to protect stored authenticator secrets.
+
 Interactive docs: http://localhost:8000/docs
 
 ## Verification

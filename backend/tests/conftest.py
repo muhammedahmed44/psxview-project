@@ -1,50 +1,49 @@
-"""Shared test setup. Uses a throw-away SQLite file, never your real database."""
+"""Shared test setup. Uses a throw-away SQLite file, never the real database."""
 import os
 import tempfile
 import uuid
 
-# These MUST be set before the app code is imported.
 os.environ["DATABASE_URL"] = f"sqlite:///{tempfile.mkdtemp()}/test.db"
-os.environ["GEMINI_API_KEY"] = ""          # tests must never call the real AI
+os.environ["GEMINI_API_KEY"] = ""
+os.environ["COOKIE_SECURE"] = "0"
 
+import pyotp
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 import auth
-import emailer
 import valuation
 from db import init_db
-
-CODES: list[str] = []                      # every "emailed" 2FA code lands here
-
-
-@pytest.fixture(autouse=True)
-def capture_codes(monkeypatch):
-    monkeypatch.setattr(emailer, "send_otp", lambda to, code: CODES.append(code))
 
 
 @pytest.fixture(scope="session")
 def app():
     init_db()
-    a = FastAPI()
-    a.include_router(auth.router)
-    a.include_router(valuation.router)
-    return a
-
-
-@pytest.fixture
-def codes():
-    return CODES
+    test_app = FastAPI()
+    test_app.include_router(auth.router)
+    test_app.include_router(valuation.router)
+    return test_app
 
 
 @pytest.fixture
 def make_user(app):
-    """Call make_user() -> (client_with_login_cookie, email). Each call = new user."""
+    """Call make_user() -> (logged-in client, email)."""
     def _make():
-        c = TestClient(app)
+        client = TestClient(app)
         email = f"{uuid.uuid4().hex[:8]}@example.com"
-        ch = c.post("/api/auth/register", json={"name": "Test", "email": email, "password": "password1"}).json()["challenge_token"]
-        assert c.post("/api/auth/verify-otp", json={"challenge_token": ch, "code": CODES[-1]}).status_code == 200
-        return c, email
+        registered = client.post(
+            "/api/auth/register",
+            json={"name": "Test", "email": email, "password": "password1"},
+        )
+        assert registered.status_code == 201
+        body = registered.json()
+        code = pyotp.TOTP(body["setup"]["manual_key"]).now()
+        verified = client.post(
+            "/api/auth/verify-totp",
+            json={"challenge_token": body["challenge_token"], "code": code},
+        )
+        assert verified.status_code == 200
+        return client, email
+
     return _make
