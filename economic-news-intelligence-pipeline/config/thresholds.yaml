@@ -1,0 +1,110 @@
+thresholds:
+  collection:
+    domestic_topic_fallback_trigger: 8
+    international_topic_fallback_trigger: 8
+  dedupe:
+    title_similarity_strict: 0.9
+    title_similarity_high: 0.82
+    token_similarity_shared_entities: 0.72
+    token_similarity_action_overlap: 0.85
+    fuzzy_token_similarity_min: 0.55
+    min_shared_entities: 1
+    max_event_tokens: 12
+    max_strong_entities: 8
+    max_fingerprint_terms: 6
+  quality:
+    min_quality_score: 1.2
+  ranking:
+    watchlist_bonus: 6.0
+    missing_published_at_recency_weight: 0.6
+    target_day_recency_weight: 4.0
+    nearby_day_recency_weight: 2.0
+    stale_recency_weight: 1.0
+    far_recency_weight: 0.2
+    missing_datetime_stale_penalty: 0.5
+    old_story_penalty_days: 3
+    very_old_story_penalty_days: 30
+    old_story_penalty: 2.0
+    very_old_story_penalty: 8.0
+    short_title_penalty: 3.0
+    soft_news_penalty: 8.0
+    roundup_penalty: 8.0
+    live_updates_penalty: 3.0
+    max_duplicate_penalty: 3.0
+    duplicate_penalty_step: 0.75
+    soft_bucket_penalty: 20.0
+    public_safety_penalty: 4.0
+  selection:
+    per_source_limit: 3
+    per_topic_limit: 3
+    group_limits:
+      domestic:
+        sbp: 3
+        pbs: 3
+        ministry_finance: 3
+        psx: 3
+        secp: 2
+        fbr: 2
+        energy_regulators: 2
+        dawn: 3
+        business_recorder: 3
+        the_news: 2
+        profit: 2
+        google_topic_pk: 5
+        default: 4
+      international:
+        reuters: 3
+        imf: 3
+        world_bank: 2
+        fed: 2
+        eia: 2
+        wto: 2
+        google_topic_intl: 4
+        default: 3
+    bucket_quotas:
+      domestic:
+        finance_macro_trade: 4
+        commodities_logistics: 2
+        tech_industry: 1
+        general_headline: 1
+        public_safety: 0
+      international:
+        us_economy_policy: 1
+        business_market_hard_news: 2
+        trade_commodities_energy: 2
+        geopolitics_market_impact: 1
+        tech_industry_hard_news: 1
+        major_headline: 1
+    bucket_max:
+      domestic:
+        finance_macro_trade: 7
+        commodities_logistics: 4
+        tech_industry: 3
+        general_headline: 3
+        public_safety: 1
+        soft_news: 0
+      international:
+        us_economy_policy: 3
+        business_market_hard_news: 4
+        trade_commodities_energy: 4
+        geopolitics_market_impact: 3
+        tech_industry_hard_news: 2
+        major_headline: 3
+        soft_news: 0
+    bucket_priority:
+      domestic:
+        finance_macro_trade: 6
+        commodities_logistics: 5
+        tech_industry: 3
+        general_headline: 2
+        public_safety: 1
+        soft_news: 0
+      international:
+        trade_commodities_energy: 6
+        business_market_hard_news: 5
+        geopolitics_market_impact: 4
+        us_economy_policy: 3
+        tech_industry_hard_news: 2
+        major_headline: 2
+        soft_news: 0
+    max_items_per_event: 1

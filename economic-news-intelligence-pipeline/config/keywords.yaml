@@ -1,0 +1,543 @@
+keywords:
+  quality:
+    domestic_anchor_keywords:
+      - Pakistan
+      - Pakistani
+      - PKR
+      - rupee
+      - State Bank of Pakistan
+      - SBP
+      - Pakistan Bureau of Statistics
+      - PBS
+      - Ministry of Finance
+      - Finance Division
+      - Pakistan Stock Exchange
+      - PSX
+      - KSE-100
+      - FBR
+      - SECP
+      - NEPRA
+      - OGRA
+      - IMF Pakistan
+      - Pakistan economy
+      - Islamabad
+      - Karachi
+      - Lahore
+      - پاکستانی
+      - پاکستان
+      - اسٹیٹ بینک
+      - روپے
+    roundup_patterns:
+      - things you missed
+      - what you missed
+      - news you missed
+      - biggest news you missed
+      - weekend rundown
+      - morning briefing
+      - daily briefing
+      - evening briefing
+      - live updates
+      - live blog
+      - recap
+      - roundup
+      - newsletter
+      - photos
+      - watch live
+      - in pictures
+      - quiz
+      - podcast
+      - here's what to know
+      - what to know
+    chinese_roundup_patterns: []
+    soft_news_patterns:
+      - celebrity
+      - lifestyle
+      - entertainment
+      - sports roundup
+      - fashion
+      - travel feature
+      - food review
+      - human interest
+      - viral video
+      - photo gallery
+    economic_quality_keywords:
+      - State Bank of Pakistan
+      - SBP
+      - policy rate
+      - monetary policy
+      - inflation
+      - CPI
+      - SPI
+      - GDP
+      - economic growth
+      - fiscal deficit
+      - federal budget
+      - tax revenue
+      - FBR
+      - IMF
+      - external debt
+      - debt servicing
+      - foreign exchange reserves
+      - remittances
+      - current account
+      - trade deficit
+      - exports
+      - imports
+      - PKR
+      - rupee
+      - KSE-100
+      - PSX
+      - circular debt
+      - electricity tariff
+      - gas tariff
+      - petroleum levy
+      - textile exports
+      - IT exports
+      - large-scale manufacturing
+      - foreign direct investment
+      - Pakistan economy
+      - tariffs
+      - supply chain
+      - oil
+      - LNG
+      - cotton
+      - wheat
+      - rice
+      - cement
+      - banking
+      - interest rates
+    general_news_keywords:
+      - announced
+      - approved
+      - released
+      - revised
+      - increased
+      - decreased
+      - signed
+      - policy
+      - regulation
+      - report
+      - data
+      - statistics
+      - outlook
+      - growth
+      - investment
+      - financing
+      - exports
+      - imports
+    hard_news_keywords:
+      - announces
+      - approves
+      - cuts rate
+      - raises rate
+      - policy rate
+      - inflation rate
+      - budget approved
+      - tax increase
+      - tariff increase
+      - IMF review
+      - loan disbursement
+      - reserves fall
+      - reserves rise
+      - exchange rate
+      - sovereign debt
+      - debt repayment
+      - trade agreement
+      - export restrictions
+      - regulatory action
+      - merger
+      - acquisition
+      - earnings
+      - default
+      - downgrade
+      - upgrade
+      - sanctions
+      - ceasefire
+      - conflict
+    chinese_roundup_patterns: []
+    reason_labels:
+      policy rate: monetary_policy
+      State Bank of Pakistan: central_bank
+      SBP: central_bank
+      inflation: inflation_data
+      CPI: inflation_data
+      GDP: economic_data
+      IMF: sovereign_financing
+      Pakistan Stock Exchange: capital_markets
+      PSX: capital_markets
+      KSE-100: capital_markets
+      FBR: taxation
+      exports: trade
+      imports: trade
+      tariff: trade_policy
+      circular debt: energy_policy
+      petroleum levy: energy_policy
+      sanctions: sanctions
+      war: geopolitics
+      conflict: geopolitics
+      ceasefire: geopolitics
+      IPO: capital_markets
+      listing: capital_markets
+  rank:
+    headline_keywords:
+      - State Bank of Pakistan
+      - SBP
+      - policy rate
+      - monetary policy
+      - inflation
+      - CPI
+      - GDP
+      - federal budget
+      - IMF
+      - loan disbursement
+      - debt restructuring
+      - foreign exchange reserves
+      - remittances
+      - current account
+      - PKR
+      - rupee
+      - Pakistan Stock Exchange
+      - PSX
+      - KSE-100
+      - tax revenue
+      - FBR
+      - electricity tariff
+      - circular debt
+      - exports
+      - imports
+      - foreign investment
+      - sovereign debt
+      - oil prices
+      - LNG
+      - trade agreement
+      - sanctions
+      - conflict
+      - major policy
+    finance_keywords:
+      - economy
+      - economic growth
+      - business
+      - finance
+      - financial
+      - markets
+      - inflation
+      - interest rate
+      - policy rate
+      - central bank
+      - SBP
+      - PKR
+      - rupee
+      - banking
+      - credit
+      - fiscal
+      - budget
+      - tax
+      - debt
+      - IMF
+      - reserves
+      - remittances
+      - exports
+      - imports
+      - trade
+      - investment
+      - PSX
+      - KSE-100
+    industry_keywords:
+      - tariffs
+      - trade
+      - exports
+      - imports
+      - customs
+      - commodities
+      - agriculture
+      - wheat
+      - rice
+      - cotton
+      - sugar
+      - fertilizer
+      - cement
+      - steel
+      - textiles
+      - banking
+      - credit
+      - foreign exchange
+      - energy
+      - oil
+      - natural gas
+      - LNG
+      - shipping
+      - ports
+      - logistics
+      - circular debt
+      - electricity
+      - petroleum
+      - IT exports
+      - telecom
+      - autos
+      - manufacturing
+    tech_keywords:
+      - technology
+      - AI
+      - artificial intelligence
+      - software
+      - IT exports
+      - fintech
+      - telecom
+      - data center
+      - cloud computing
+      - cybersecurity
+      - startup
+      - digital economy
+      - semiconductor
+      - satellite
+    business_keywords:
+      - business
+      - company
+      - stock
+      - shares
+      - earnings
+      - market
+      - finance
+      - corporate
+      - listed company
+      - acquisition
+      - merger
+    business_market_hard_news_keywords:
+      - IPO
+      - initial public offering
+      - listing
+      - listed company
+      - market debut
+      - shares
+      - stock
+      - valuation
+      - market cap
+      - earnings
+      - profit
+      - loss
+      - dividend
+      - acquisition
+      - merger
+      - bond
+      - Sukuk
+      - order book
+      - oversubscribed
+      - PSX
+      - KSE-100
+    economic_priority_keywords:
+      - SBP
+      - policy rate
+      - monetary policy
+      - interest rates
+      - inflation
+      - CPI
+      - GDP
+      - PKR
+      - rupee
+      - exchange rate
+      - reserves
+      - remittances
+      - current account
+      - fiscal deficit
+      - budget
+      - tax
+      - FBR
+      - IMF
+      - debt
+      - financing
+      - trade
+      - exports
+      - imports
+      - tariffs
+      - foreign investment
+      - PSX
+      - KSE-100
+      - oil
+      - LNG
+      - energy
+    trade_commodity_priority_keywords:
+      - commodities
+      - agriculture
+      - wheat
+      - rice
+      - cotton
+      - sugar
+      - fertilizer
+      - copper
+      - aluminum
+      - iron ore
+      - steel
+      - crude oil
+      - natural gas
+      - LNG
+      - energy
+      - shipping
+      - tanker
+      - port
+      - Strait of Hormuz
+      - Red Sea
+      - freight
+      - supply chain
+      - textile exports
+    market_impact_keywords:
+      - PSX
+      - KSE-100
+      - stock market
+      - shares
+      - listed company
+      - market cap
+      - valuation
+      - IPO
+      - bond
+      - Sukuk
+      - yield
+      - policy rate
+      - interest rate
+      - PKR
+      - rupee
+      - exchange rate
+      - foreign exchange reserves
+      - sovereign debt
+      - debt servicing
+      - IMF
+      - fiscal deficit
+      - budget
+      - tax
+      - exports
+      - imports
+      - oil price
+      - electricity tariff
+    economic_tech_keywords:
+      - AI
+      - artificial intelligence
+      - software
+      - IT exports
+      - fintech
+      - telecom
+      - digital economy
+      - cybersecurity
+      - startup
+      - cloud computing
+    public_safety_keywords:
+      - disaster
+      - flood
+      - earthquake
+      - cyclone
+      - storm
+      - attack
+      - crash
+      - fire
+      - supply disruption
+    global_macro_finance_keywords:
+      - IMF
+      - World Bank
+      - Federal Reserve
+      - Fed
+      - interest rates
+      - Treasury yields
+      - bond yields
+      - dollar
+      - oil
+      - LNG
+      - sovereign debt
+      - fiscal policy
+      - tariffs
+      - global trade
+      - commodity prices
+      - shipping disruption
+    us_economy_keywords:
+      - Fed
+      - Federal Reserve
+      - inflation
+      - CPI
+      - interest rates
+      - rate cut
+      - rate hike
+      - unemployment
+      - jobs
+      - dollar
+      - Treasury yields
+      - GDP
+      - fiscal deficit
+      - tax
+      - budget
+      - consumer spending
+      - retail sales
+      - trade policy
+      - tariffs
+    non_economic_soft_keywords:
+      - culture
+      - tourism
+      - sports
+      - entertainment
+      - celebrity
+      - lifestyle
+      - interview
+      - photo gallery
+      - fashion
+      - food
+      - quiz
+      - podcast
+    international_political_only_keywords:
+      - politician
+      - lawmaker
+      - election campaign
+      - crime
+      - criminal
+      - religious leader
+      - celebrity
+    sanctions_person_only_keywords:
+      - politician
+      - lawmaker
+      - official
+      - person
+      - religious leader
+  collect:
+    domestic_economic_keywords:
+      - Pakistan
+      - Pakistani
+      - Pakistan economy
+      - State Bank of Pakistan
+      - SBP
+      - policy rate
+      - inflation
+      - CPI
+      - GDP
+      - budget
+      - fiscal deficit
+      - tax revenue
+      - FBR
+      - IMF Pakistan
+      - external debt
+      - reserves
+      - remittances
+      - current account
+      - trade deficit
+      - exports
+      - imports
+      - PKR
+      - rupee
+      - PSX
+      - KSE-100
+      - circular debt
+      - electricity tariff
+      - gas tariff
+      - petroleum levy
+      - textile exports
+      - IT exports
+      - manufacturing
+      - foreign direct investment
+      - oil
+      - LNG
+      - wheat
+      - rice
+      - cotton
+      - cement
+      - banking
+      - interest rates
+      - Pakistani economy
+      - پاکستان
+      - پاکستانی معیشت
+      - اسٹیٹ بینک
+      - مہنگائی
+      - روپے

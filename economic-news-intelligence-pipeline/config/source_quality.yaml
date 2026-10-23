@@ -1,0 +1,193 @@
+source_quality:
+  official:
+    sources:
+      - state bank of pakistan
+      - sbp
+      - pakistan bureau of statistics
+      - pbs
+      - ministry of finance pakistan
+      - finance division
+      - pakistan stock exchange
+      - psx
+      - securities and exchange commission of pakistan
+      - secp
+      - federal board of revenue
+      - fbr
+      - nepra
+      - ogra
+      - imf
+      - international monetary fund
+      - world bank
+      - world trade organization
+      - wto
+      - federal reserve
+      - u.s. energy information administration
+      - eia
+    domains:
+      - sbp.org.pk
+      - pbs.gov.pk
+      - finance.gov.pk
+      - finance.gov.pk
+      - psx.com.pk
+      - secp.gov.pk
+      - fbr.gov.pk
+      - nepra.org.pk
+      - ogra.org.pk
+      - imf.org
+      - worldbank.org
+      - wto.org
+      - federalreserve.gov
+      - eia.gov
+  tier1_media:
+    sources:
+      - reuters
+      - associated press
+      - ap news
+      - bloomberg
+      - bbc
+      - dawn
+      - business recorder
+    domains:
+      - reuters.com
+      - apnews.com
+      - bloomberg.com
+      - bbc.com
+      - dawn.com
+      - brecorder.com
+  financial_media:
+    sources:
+      - business recorder
+      - profit by pakistan today
+      - dawn business
+      - reuters business
+      - bloomberg
+      - financial times
+      - cnbc
+    domains:
+      - brecorder.com
+      - profit.pakistantoday.com.pk
+      - dawn.com
+      - reuters.com
+      - bloomberg.com
+      - ft.com
+      - cnbc.com
+  acceptable_media:
+    sources:
+      - the news international
+      - the guardian
+      - washington post
+      - new york times
+      - world economic forum
+    domains:
+      - thenews.com.pk
+      - theguardian.com
+      - washingtonpost.com
+      - nytimes.com
+      - weforum.org
+  denylist:
+    sources:
+      - tmgm
+      - moomoo
+      - webull
+      - robinhood
+      - etoro
+      - plus500
+      - xm
+      - exness
+      - oanda
+      - ig
+      - fxstreet
+      - dailyfx
+      - tipranks
+      - zacks
+      - investorplace
+      - the motley fool
+      - seeking alpha
+      - benzinga
+      - finbold
+      - coinpedia
+      - stocktitan
+      - gurufocus
+      - simply wall st
+      - marketbeat
+      - investingcube
+      - tradingview
+      - forexlive
+      - investing.com
+      - okx
+      - cryptorank
+      - binance
+      - bybit
+      - coinbase
+      - kraken
+      - bitget
+      - gate.io
+    domains:
+      - tmgm.com
+      - moomoo.com
+      - webull.com
+      - robinhood.com
+      - etoro.com
+      - plus500.com
+      - xm.com
+      - exness.com
+      - oanda.com
+      - ig.com
+      - fxstreet.com
+      - dailyfx.com
+      - tipranks.com
+      - zacks.com
+      - investorplace.com
+      - fool.com
+      - seekingalpha.com
+      - benzinga.com
+      - finbold.com
+      - coinpedia.org
+      - stocktitan.net
+      - gurufocus.com
+      - simplywall.st
+      - marketbeat.com
+      - investingcube.com
+      - tradingview.com
+      - forexlive.com
+      - investing.com
+      - cryptorank.io
+      - okx.com
+      - binance.com
+      - bybit.com
+      - coinbase.com
+      - kraken.com
+      - bitget.com
+      - gate.io
+  low_quality_finance_patterns:
+    - price target
+    - technical analysis
+    - buy/sell/hold
+    - forecast
+    - broker says
+    - provided by investing.com
+    - trading signal
+    - forex broker
+    - cfd
+    - price prediction
+    - analyst rating
+    - stock picks
+  content_farm_patterns:
+    - everything you need to know
+    - what to know
+    - best stocks
+    - top stocks
+    - should you buy
+    - why this stock
+  low_quality_title_patterns:
+    - eur/usd
+    - usd/jpy
+    - gbp/usd
+    - xau/usd
+    - btc/usd
+    - technical analysis
+    - price target
+    - forecast
+    - buy/sell/hold
+    - analyst rating
+    - should you buy

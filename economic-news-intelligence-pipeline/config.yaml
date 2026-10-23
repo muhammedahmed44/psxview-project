@@ -1,0 +1,21 @@
+timezone: Asia/Karachi
+output_dir: output/reports
+log_file: logs/daily_news.log
+temp_output_dir: output
+paid_domains:
+  - wsj.com
+  - bloomberg.com
+  - ft.com
+  - economist.com
+  - nytimes.com
+  - washingtonpost.com
+  - reuters.com
+apis:
+  newsapi:
+    enabled: true
+    endpoint: https://newsapi.org/v2/everything
+    page_size: 20
+  gdelt:
+    enabled: true
+    endpoint: https://api.gdeltproject.org/api/v2/doc/doc
+    max_records: 20

@@ -1,0 +1,322 @@
+sources:
+  # Official Pakistani data and policy sources. HTML collection support must be verified per site.
+  - name: State Bank of Pakistan Press Releases
+    method: html
+    category: domestic
+    url: https://www.sbp.org.pk/press-release/
+    source_weight: 10
+    source_group: sbp
+    source_type: core
+    tags: [SBP, monetary policy, policy rate, inflation, reserves, remittances, banking, PKR]
+    timezone: Asia/Karachi
+
+  - name: State Bank of Pakistan Economic Data
+    method: html
+    category: domestic
+    url: https://www.sbp.org.pk/economic-data
+    source_weight: 10
+    source_group: sbp
+    source_type: core
+    tags: [GDP, CPI, exchange rates, reserves, balance of payments, trade, interest rates]
+    timezone: Asia/Karachi
+
+  - name: Pakistan Bureau of Statistics
+    method: html
+    category: domestic
+    url: https://www.pbs.gov.pk/
+    source_weight: 10
+    source_group: pbs
+    source_type: core
+    tags: [CPI, inflation, GDP, trade, labour, population, industrial production]
+    timezone: Asia/Karachi
+
+  - name: Pakistan Bureau of Statistics National Accounts
+    method: html
+    category: domestic
+    url: https://www.pbs.gov.pk/national-accounts-2/
+    source_weight: 10
+    source_group: pbs
+    source_type: core
+    tags: [GDP, national accounts, fiscal year, sectoral growth]
+    timezone: Asia/Karachi
+
+  - name: Pakistan Bureau of Statistics NSDP
+    method: html
+    category: domestic
+    url: https://www.pbs.gov.pk/nsdp/
+    source_weight: 9
+    source_group: pbs
+    source_type: core
+    tags: [macroeconomic data, CPI, GDP, debt, trade, exchange rates]
+    timezone: Asia/Karachi
+
+  - name: Ministry of Finance Economic Updates
+    method: html
+    category: domestic
+    url: https://finance.gov.pk/updates.html
+    source_weight: 10
+    source_group: ministry_finance
+    source_type: core
+    tags: [economic outlook, fiscal deficit, budget, debt, IMF, economic survey]
+    timezone: Asia/Karachi
+
+  - name: Finance Division Pakistan
+    method: html
+    category: domestic
+    url: https://www.finance.gov.pk/
+    source_weight: 10
+    source_group: ministry_finance
+    source_type: core
+    tags: [federal budget, fiscal operations, debt, taxation, economic survey]
+    timezone: Asia/Karachi
+
+  - name: Pakistan Stock Exchange
+    method: html
+    category: domestic
+    url: https://www.psx.com.pk/
+    source_weight: 9
+    source_group: psx
+    source_type: core
+    tags: [PSX, KSE-100, listed companies, market disclosures, corporate actions]
+    timezone: Asia/Karachi
+
+  - name: Securities and Exchange Commission of Pakistan
+    method: html
+    category: domestic
+    url: https://www.secp.gov.pk/
+    source_weight: 9
+    source_group: secp
+    source_type: core
+    tags: [capital markets, corporate regulation, listed companies, insurance, fintech]
+    timezone: Asia/Karachi
+
+  - name: Federal Board of Revenue
+    method: html
+    category: domestic
+    url: https://www.fbr.gov.pk/
+    source_weight: 9
+    source_group: fbr
+    source_type: core
+    tags: [tax, revenue, customs, GST, income tax, federal budget]
+    timezone: Asia/Karachi
+
+  - name: Pakistan Economic Survey
+    method: html
+    category: domestic
+    url: https://www.finance.gov.pk/survey_2026.html
+    enabled: false
+    source_weight: 10
+    source_group: ministry_finance
+    source_type: optional
+    tags: [economic survey, GDP, agriculture, industry, services, fiscal year]
+    notes: Verify current annual report URL before enabling; year-specific URL may change.
+    timezone: Asia/Karachi
+
+  - name: NEPRA
+    method: html
+    category: domestic
+    url: https://nepra.org.pk/
+    source_weight: 8
+    source_group: energy_regulators
+    source_type: core
+    tags: [electricity tariffs, power sector, circular debt, energy regulation]
+    timezone: Asia/Karachi
+
+  - name: OGRA
+    method: html
+    category: domestic
+    url: https://ogra.org.pk/
+    source_weight: 8
+    source_group: energy_regulators
+    source_type: core
+    tags: [petroleum prices, gas tariffs, LNG, oil and gas regulation]
+    timezone: Asia/Karachi
+
+  - name: Dawn Business
+    method: html
+    category: domestic
+    url: https://www.dawn.com/business
+    source_weight: 9
+    source_group: dawn
+    source_type: core
+    tags: [Pakistan economy, business, policy, trade, industry, markets]
+    timezone: Asia/Karachi
+
+  - name: Business Recorder
+    method: html
+    category: domestic
+    url: https://www.brecorder.com/
+    source_weight: 9
+    source_group: business_recorder
+    source_type: core
+    tags: [financial news, Pakistan economy, PSX, taxation, banking, trade]
+    timezone: Asia/Karachi
+
+  - name: The News International Business
+    method: html
+    category: domestic
+    url: https://www.thenews.com.pk/business
+    source_weight: 7
+    source_group: the_news
+    source_type: optional
+    tags: [business, economy, policy, industry]
+    timezone: Asia/Karachi
+
+  - name: Profit by Pakistan Today
+    method: html
+    category: domestic
+    url: https://profit.pakistantoday.com.pk/
+    source_weight: 8
+    source_group: profit
+    source_type: core
+    tags: [business, corporate, startups, economy, markets]
+    timezone: Asia/Karachi
+
+  # Search-based discovery is useful for Pakistan-focused stories from global sources.
+  - name: Pakistan Economy Topic
+    method: google_news_rss
+    category: domestic
+    query: '(Pakistan OR Pakistani OR PKR OR "State Bank of Pakistan" OR SBP) (economy OR inflation OR GDP OR budget OR trade OR exports OR imports OR remittances)'
+    source_weight: 8
+    source_group: google_topic_pk
+    topic_group: topic_pakistan_economy
+    source_type: core
+    tags: [Pakistan, macroeconomics, inflation, trade, policy]
+    timezone: Asia/Karachi
+
+  - name: Pakistan Markets Topic
+    method: google_news_rss
+    category: domestic
+    query: '(Pakistan OR PSX OR "KSE-100") (stocks OR shares OR market OR listed companies OR banking OR earnings)'
+    source_weight: 8
+    source_group: google_topic_pk
+    topic_group: topic_pakistan_markets
+    source_type: core
+    tags: [PSX, KSE-100, equities, corporate results]
+    timezone: Asia/Karachi
+
+  - name: Pakistan IMF and Debt Topic
+    method: google_news_rss
+    category: domestic
+    query: 'Pakistan (IMF OR "Extended Fund Facility" OR sovereign debt OR external financing OR Eurobond OR Sukuk OR fiscal deficit)'
+    source_weight: 9
+    source_group: google_topic_pk
+    topic_group: topic_pakistan_debt
+    source_type: core
+    tags: [IMF, sovereign debt, financing, fiscal policy]
+    timezone: Asia/Karachi
+
+  - name: Pakistan Energy Topic
+    method: google_news_rss
+    category: domestic
+    query: 'Pakistan (electricity tariff OR gas tariff OR circular debt OR petroleum levy OR LNG OR power sector)'
+    source_weight: 8
+    source_group: google_topic_pk
+    topic_group: topic_pakistan_energy
+    source_type: core
+    tags: [energy, tariffs, circular debt, petroleum]
+    timezone: Asia/Karachi
+
+  - name: Pakistan Trade and Industry Topic
+    method: google_news_rss
+    category: domestic
+    query: 'Pakistan (textile exports OR IT exports OR agriculture OR cotton OR cement OR automobiles OR manufacturing OR foreign investment)'
+    source_weight: 7
+    source_group: google_topic_pk
+    topic_group: topic_pakistan_industry
+    source_type: core
+    tags: [exports, textiles, IT, agriculture, industry, investment]
+    timezone: Asia/Karachi
+
+  # Global drivers relevant to Pakistan: rates, oil, commodities, financing and trade.
+  - name: Reuters Business
+    method: html
+    category: international
+    url: https://www.reuters.com/business/
+    source_weight: 9
+    source_group: reuters
+    source_type: core
+    tags: [global markets, trade, commodities, companies, financing]
+    timezone: UTC
+
+  - name: Reuters World
+    method: html
+    category: international
+    url: https://www.reuters.com/world/
+    source_weight: 8
+    source_group: reuters
+    source_type: optional
+    tags: [geopolitics, trade routes, sanctions, energy, regional risk]
+    timezone: UTC
+
+  - name: IMF News
+    method: html
+    category: international
+    url: https://www.imf.org/en/News
+    source_weight: 10
+    source_group: imf
+    source_type: core
+    tags: [IMF, Pakistan program, sovereign financing, global economy]
+    timezone: UTC
+
+  - name: World Bank News
+    method: html
+    category: international
+    url: https://www.worldbank.org/en/news
+    source_weight: 9
+    source_group: world_bank
+    source_type: core
+    tags: [Pakistan development, financing, poverty, growth, trade]
+    timezone: UTC
+
+  - name: U.S. Federal Reserve
+    method: rss
+    category: international
+    url: https://www.federalreserve.gov/feeds/press_all.xml
+    source_weight: 8
+    source_group: fed
+    source_type: core
+    tags: [Fed, US rates, dollar, global liquidity, bond yields]
+    timezone: America/New_York
+
+  - name: U.S. Energy Information Administration
+    method: rss
+    category: international
+    url: https://www.eia.gov/rss/todayinenergy.xml
+    source_weight: 8
+    source_group: eia
+    source_type: core
+    tags: [oil, LNG, natural gas, energy prices, commodities]
+    timezone: America/New_York
+
+  - name: World Trade Organization News
+    method: html
+    category: international
+    url: https://www.wto.org/english/news_e/news_e.htm
+    source_weight: 8
+    source_group: wto
+    source_type: optional
+    tags: [trade policy, tariffs, exports, global trade]
+    timezone: UTC
+
+  - name: China Pakistan Economic Corridor Topic
+    method: google_news_rss
+    category: international
+    query: '(Pakistan OR Pakistani) (China OR CPEC OR "Chinese investment") (trade OR investment OR energy OR infrastructure OR financing)'
+    source_weight: 8
+    source_group: google_topic_intl
+    topic_group: topic_cpec
+    source_type: optional
+    tags: [CPEC, China Pakistan trade, Chinese investment, energy projects]
+    timezone: Asia/Karachi
+
+  - name: Global Oil and Shipping Topic
+    method: google_news_rss
+    category: international
+    query: '(oil OR crude OR LNG OR shipping OR tanker OR "Strait of Hormuz" OR Red Sea) (price OR supply OR disruption OR sanctions)'
+    source_weight: 7
+    source_group: google_topic_intl
+    topic_group: topic_energy_shipping
+    source_type: core
+    tags: [oil, LNG, shipping, supply chains, inflation risk]
+    timezone: UTC

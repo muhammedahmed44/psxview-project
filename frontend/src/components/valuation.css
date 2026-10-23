@@ -1,0 +1,43 @@
+/* Valuation page. Uses the app's light tokens from index.css (--bg, --surface, --ink, --mute, --line, --blue, --up, --down). */
+.vwrap { max-width: 860px; margin: 0 auto; padding: 24px 16px 80px; }
+.vwrap h1 { font-size: clamp(22px, 5vw, 30px); margin: 0 0 4px; letter-spacing: -0.5px; }
+.v-sub { color: var(--mute); margin: 0 0 16px; font-size: 14px; }
+.v-card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 18px; margin-bottom: 14px; box-shadow: 0 1px 3px rgba(11, 23, 48, 0.05); }
+.v-card h3 { margin: 0 0 12px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--mute); }
+.v-center { text-align: center; padding: 40px 18px; }
+.v-grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.v-grid2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+@media (max-width: 640px) { .v-grid3, .v-grid2 { grid-template-columns: 1fr; } }
+.vwrap label { display: block; font-size: 12px; font-weight: 600; color: var(--mute); }
+.vwrap input[type='number'], .vwrap select { display: block; width: 100%; margin-top: 4px; padding: 9px 11px; border: 1.5px solid var(--line); border-radius: 10px; background: #fff; color: var(--ink); font: inherit; }
+.vwrap input[type='number']:focus, .vwrap select:focus { outline: none; border-color: var(--blue); }
+.v-slider .v-row { display: flex; justify-content: space-between; font-size: 13px; }
+.v-slider b { color: var(--blue); font-variant-numeric: tabular-nums; }
+.v-slider input[type='range'] { width: 100%; accent-color: var(--blue); }
+.v-years { display: flex; gap: 8px; margin-top: 14px; }
+.v-years button { flex: 1; padding: 9px 0; border-radius: 10px; border: 1.5px solid var(--line); background: var(--bg); color: var(--mute); font-weight: 600; }
+.v-years button.on { background: var(--blue-soft); border-color: var(--blue); color: var(--blue); }
+.v-results { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 640px) { .v-results { grid-template-columns: 1fr; } }
+.v-big small { display: block; color: var(--mute); font-size: 12px; }
+.v-big strong { display: block; font-size: clamp(30px, 8vw, 40px); letter-spacing: -1px; line-height: 1.15; color: var(--navy); }
+.v-big .up { color: var(--up); font-weight: 600; }
+.v-big .down { color: var(--down); font-weight: 600; }
+.v-chart { position: relative; height: 240px; margin-top: 14px; }
+.v-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.vbtn { border: 0; border-radius: 10px; padding: 10px 18px; font-weight: 600; background: var(--blue); color: #fff; }
+.vbtn:hover { filter: brightness(1.08); }
+.vbtn.alt { background: var(--blue-soft); color: var(--blue); }
+.vbtn:disabled { opacity: 0.55; cursor: not-allowed; }
+.v-note { color: var(--mute); font-size: 13px; margin: 10px 0 0; }
+.v-warn { color: var(--amber); background: var(--amber-soft); padding: 10px 14px; border-radius: 10px; }
+.v-ai { margin-top: 12px; background: var(--blue-soft); border-radius: 12px; padding: 12px 14px; }
+.v-ai p { margin: 0 0 6px; }
+.v-ai small { color: var(--mute); }
+.v-saved { list-style: none; margin: 0; padding: 0; }
+.v-saved li { display: flex; gap: 12px; align-items: center; padding: 9px 0; border-top: 1px solid var(--line); font-size: 14px; }
+.v-saved li span { color: var(--mute); margin-right: auto; }
+.v-disc { color: var(--mute); font-size: 12px; text-align: center; margin-top: 20px; }
+.linkbtn { background: none; border: 0; color: var(--blue); font-weight: 600; padding: 6px 0; text-decoration: underline; }
+.who { color: #dbe5ff; font-size: 14px; }
+.btn:disabled { opacity: 0.6; cursor: not-allowed; }
