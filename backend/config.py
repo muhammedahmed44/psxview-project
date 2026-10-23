@@ -4,12 +4,25 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-# Resolve the local development file relative to this module. Railway injects
+# Resolve the local development file relative to this module. Cloud hosts inject
 # variables directly, and those values take precedence over this file.
 load_dotenv(Path(__file__).with_name(".env"))
 
-# Database connection string. Defaults to a local SQLite file in the backend folder.
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./psxviewai.db")
+
+def normalize_database_url(value: str) -> str:
+    """Select psycopg 3 when a hosting provider supplies a PostgreSQL URL."""
+    if value.startswith("postgres://"):
+        return value.replace("postgres://", "postgresql+psycopg://", 1)
+    if value.startswith("postgresql://"):
+        return value.replace("postgresql://", "postgresql+psycopg://", 1)
+    return value
+
+
+# SQLite remains the zero-setup local default. Render supplies PostgreSQL via
+# DATABASE_URL and the normalization above selects the installed psycopg driver.
+DATABASE_URL = normalize_database_url(
+    os.getenv("DATABASE_URL", "sqlite:///./psxviewai.db")
+)
 
 # Used to sign login cookies. CHANGE in .env. Generate one with:
 #   python -c "import secrets; print(secrets.token_urlsafe(48))"
@@ -23,7 +36,7 @@ COOKIE_NAME = "psx_session"       # name of the browser cookie that holds the se
 COOKIE_SECURE = os.getenv("COOKIE_SECURE", "0") == "1"   # set 1 when using https
 
 # Extra origins are only needed when the frontend is hosted separately. The
-# production Docker image serves it from FastAPI, so it remains same-origin.
+# Vercel proxies /api to Render, so production requests also remain same-origin.
 _LOCAL_ORIGINS = (
     "http://localhost:5173,http://127.0.0.1:5173,"
     "http://localhost:5174,http://127.0.0.1:5174,"
@@ -43,7 +56,7 @@ SMTP_USER = os.getenv("SMTP_USER", "")
 SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
 SMTP_FROM = os.getenv("SMTP_FROM", "no-reply@psxviewai.local")
 
-# HTTPS email delivery works on Railway plans where outbound SMTP is blocked.
+# HTTPS email delivery works on cloud plans where outbound SMTP is blocked.
 # RESEND_FROM must use a sender/domain authorized in the Resend account.
 RESEND_API_KEY = os.getenv("RESEND_API_KEY", "").strip()
 RESEND_FROM = os.getenv("RESEND_FROM", "PSXviewAI <onboarding@resend.dev>").strip()

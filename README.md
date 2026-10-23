@@ -33,7 +33,7 @@ news/documents, evidence items, valuations, and research conversations.
 3. **Configure environment**
 
    Copy `.env.example` to `.env` (not committed) and fill in at least
-   `DATABASE_URL` (for a real PostgreSQL instance) and `JWT_SECRET_KEY`. In the
+   `DATABASE_URL` (for a real PostgreSQL instance) and `JWT_SECRET`. In the
    preview environment, set them via the Secrets panel.
 
 4. **Run database migrations** (uses SQLite fallback if `DATABASE_URL` is not set):
@@ -67,10 +67,11 @@ The root `package.json` is the preview entry point and serves the existing React
 
 ## Deployment
 
-The repository includes a multi-stage Docker image that builds the React frontend
-and serves it with FastAPI from one origin. See [DEPLOY_RAILWAY.md](DEPLOY_RAILWAY.md)
-for Railway deployment, persistent SQLite storage, secrets, email, and health-check
-configuration.
+For the recommended split deployment, see
+[DEPLOY_VERCEL_RENDER.md](DEPLOY_VERCEL_RENDER.md): the React frontend runs on
+Vercel, FastAPI runs on Render, and Render PostgreSQL stores persistent data.
+The repository also retains [DEPLOY_RAILWAY.md](DEPLOY_RAILWAY.md) for the
+single-container Railway option.
 
 ## Frontend regeneration
 

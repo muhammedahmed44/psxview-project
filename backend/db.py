@@ -8,8 +8,9 @@ from config import DATABASE_URL
 # different threads (FastAPI runs requests in a thread pool).
 _args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
 
-# Single shared engine for the whole app.
-engine = create_engine(DATABASE_URL, connect_args=_args)
+# Single shared engine for the whole app. Pre-ping replaces stale cloud
+# connections automatically after a database restart or idle period.
+engine = create_engine(DATABASE_URL, connect_args=_args, pool_pre_ping=True)
 
 # Factory that creates new DB sessions bound to the engine.
 SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
