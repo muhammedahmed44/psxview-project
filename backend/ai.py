@@ -59,16 +59,18 @@ def fallback_text(inp: dict, res: dict) -> str:
     return f"{a} {b} Educational only, not advice."
 
 
-def explain(inp: dict, res: dict) -> dict:
-    """
-    Ask Gemini to explain the valuation.
-
-    Returns a dict like {"text": "...", "source": "gemini"} on success,
-    or {"text": "...", "source": "fallback"} if Gemini fails or is not configured.
-    """
+def generate_text(
+    prompt: str,
+    fallback: str,
+    *,
+    max_output_tokens: int = 1200,
+    temperature: float = 0.2,
+    purpose: str = "text generation",
+) -> dict:
+    """Generate grounded text with Gemini, returning ``fallback`` on failure."""
     # No API key configured: skip the network call entirely.
     if not config.GEMINI_API_KEY:
-        return {"text": fallback_text(inp, res), "source": "fallback"}
+        return {"text": fallback, "source": "fallback"}
 
     # Remember the last error so we can log why we fell back.
     last_error: Exception | None = None
@@ -81,9 +83,10 @@ def explain(inp: dict, res: dict) -> dict:
                 URL.format(model=config.GEMINI_MODEL),
                 headers={"x-goog-api-key": config.GEMINI_API_KEY, "Content-Type": "application/json"},
                 json={
-                    "contents": [{"parts": [{"text": build_prompt(inp, res)}]}],
+                    "contents": [{"parts": [{"text": prompt}]}],
                     "generationConfig": {
-                        "maxOutputTokens": 1200,
+                        "maxOutputTokens": max_output_tokens,
+                        "temperature": temperature,
                         "thinkingConfig": {"thinkingLevel": "low"},
                     },
                 },
@@ -91,9 +94,11 @@ def explain(inp: dict, res: dict) -> dict:
             )
             r.raise_for_status()
 
-            # Parse the first candidate's text part.
+            # Join all text parts because thinking-capable models can return
+            # the final answer in more than one part.
             candidate = r.json()["candidates"][0]
-            text = candidate.get("content", {}).get("parts", [{}])[0].get("text", "").strip()
+            parts = candidate.get("content", {}).get("parts", [])
+            text = "".join(str(part.get("text", "")) for part in parts).strip()
 
             # Guard against empty or blocked responses.
             if not text:
@@ -105,7 +110,12 @@ def explain(inp: dict, res: dict) -> dict:
             # HTTP error from Gemini (e.g., 429 rate limit, 5xx outage, 400 bad request).
             last_error = e
             status = e.response.status_code
-            log.warning("Gemini request failed with HTTP %s (attempt %s/3)", status, attempt + 1)
+            log.warning(
+                "Gemini %s failed with HTTP %s (attempt %s/3)",
+                purpose,
+                status,
+                attempt + 1,
+            )
 
             # Do not retry client errors that won't fix themselves (4xx except 429).
             if status != 429 and status < 500:
@@ -114,12 +124,33 @@ def explain(inp: dict, res: dict) -> dict:
         except Exception as e:
             # Network errors, JSON parsing errors, unexpected response shapes, etc.
             last_error = e
-            log.warning("Gemini request failed: %s (attempt %s/3)", type(e).__name__, attempt + 1)
+            log.warning(
+                "Gemini %s failed: %s (attempt %s/3)",
+                purpose,
+                type(e).__name__,
+                attempt + 1,
+            )
 
         # Wait before retrying: 1s, then 2s.
         if attempt < 2:
             time.sleep(attempt + 1)
 
     # All retries exhausted or non-retryable error: return the local fallback text.
-    log.warning("Using valuation fallback after Gemini failure: %s", type(last_error).__name__)
-    return {"text": fallback_text(inp, res), "source": "fallback"}
+    log.warning("Using %s fallback after Gemini failure: %s", purpose, type(last_error).__name__)
+    return {"text": fallback, "source": "fallback"}
+
+
+def explain(inp: dict, res: dict) -> dict:
+    """
+    Ask Gemini to explain the valuation.
+
+    Returns a dict like {"text": "...", "source": "gemini"} on success,
+    or {"text": "...", "source": "fallback"} if Gemini fails or is not configured.
+    """
+    return generate_text(
+        build_prompt(inp, res),
+        fallback_text(inp, res),
+        max_output_tokens=1200,
+        temperature=0.2,
+        purpose="valuation explanation",
+    )

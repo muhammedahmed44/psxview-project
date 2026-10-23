@@ -48,7 +48,7 @@ export interface MarketPayload {
 
 export const fetchMarket = () => request<MarketPayload>('/api/market')
 
-export interface ResearchReply { answer: string; citations: { title: string; date: string; provenance: string }[]; provenance: { market: string; news: string } }
+export interface ResearchReply { answer: string; citations: { title: string; date: string; provenance: string }[]; provenance: { market: string; news: string; answer: 'gemini' | 'fallback' } }
 export const researchApi = {
   ask: (question: string, conversation_id?: number) => post<ResearchReply>('/api/research/ask', { question, conversation_id }),
   conversations: () => request<{ id: number; title: string; messages: { role: string; content: string; citations: string }[] }[]>('/api/research/conversations'),
