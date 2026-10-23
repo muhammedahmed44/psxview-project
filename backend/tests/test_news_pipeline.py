@@ -2,8 +2,65 @@ from __future__ import annotations
 
 import json
 from subprocess import CompletedProcess
+import urllib.request
 
 import news_service
+
+
+def test_gemini_news_evaluation_uses_generate_content(monkeypatch):
+    expected = {
+        "dir": "up",
+        "sentiment": "Positive",
+        "strength": 2,
+        "summary": "Demand improves",
+        "detail": "Higher demand can support sector earnings.",
+        "confidence": 82,
+    }
+    captured = {}
+
+    class FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def read(self):
+            body = {
+                "candidates": [{
+                    "content": {"parts": [{"text": json.dumps(expected)}]},
+                }],
+            }
+            return json.dumps(body).encode("utf-8")
+
+    def fake_urlopen(request, timeout):
+        captured["url"] = request.full_url
+        captured["api_key"] = request.get_header("X-goog-api-key")
+        captured["payload"] = json.loads(request.data.decode("utf-8"))
+        captured["timeout"] = timeout
+        return FakeResponse()
+
+    monkeypatch.setenv("GEMINI_MODEL", "gemini-test-model")
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+
+    result = news_service._evaluate_llm(
+        "Industrial demand rises",
+        "Sales increased during the quarter.",
+        "LUCK",
+        "Cement",
+        "test-api-key",
+        provider="gemini",
+    )
+
+    assert captured["url"] == (
+        "https://generativelanguage.googleapis.com/v1beta/"
+        "models/gemini-test-model:generateContent"
+    )
+    assert captured["api_key"] == "test-api-key"
+    assert captured["payload"]["contents"][0]["parts"][0]["text"]
+    assert captured["payload"]["generationConfig"]["responseMimeType"] == "application/json"
+    assert captured["timeout"] == 8
+    assert result == {**expected, "evaluator": "llm"}
 
 
 def test_load_latest_snapshot_skips_newer_empty_file(tmp_path, monkeypatch):

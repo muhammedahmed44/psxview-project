@@ -21,6 +21,10 @@ from zoneinfo import ZoneInfo
 
 log = logging.getLogger("psxviewai.news")
 
+GEMINI_GENERATE_URL = (
+    "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+)
+
 # Paths to the pipeline bundled inside the backend service and its snapshots.
 BACKEND_DIR = Path(__file__).resolve().parent
 PIPELINE_DIR = BACKEND_DIR / "economic-news-intelligence-pipeline"
@@ -298,23 +302,30 @@ Respond ONLY with a valid JSON object with the following fields:
                 return result
         elif provider == "gemini":
             import urllib.request
+            model = os.getenv("GEMINI_MODEL", "gemini-3.5-flash").strip()
             req_data = {
-                "model": os.getenv("GEMINI_MODEL", "gemini-1.5"),
-                "input": prompt,
-                "temperature": 0.2,
+                "contents": [{"parts": [{"text": prompt}]}],
+                "generationConfig": {
+                    "temperature": 0.2,
+                    "responseMimeType": "application/json",
+                },
             }
             req = urllib.request.Request(
-                "https://api.generativeai.google/v1beta2/models/gemini-1.5:generateMessage",
+                GEMINI_GENERATE_URL.format(model=model),
                 data=json.dumps(req_data).encode("utf-8"),
                 headers={
                     "Content-Type": "application/json",
-                    "Authorization": f"Bearer {api_key}",
+                    "x-goog-api-key": api_key,
                 },
                 method="POST"
             )
             with urllib.request.urlopen(req, timeout=8) as response:
                 res_body = json.loads(response.read().decode("utf-8"))
-                result = json.loads(res_body["candidates"][0]["content"][0]["text"])
+                parts = res_body["candidates"][0]["content"]["parts"]
+                generated = "".join(str(part.get("text", "")) for part in parts).strip()
+                if not generated:
+                    raise ValueError("Gemini returned an empty evaluation")
+                result = json.loads(generated)
                 result["evaluator"] = "llm"
                 return result
     except Exception as e:
