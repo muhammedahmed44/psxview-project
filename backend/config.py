@@ -18,6 +18,21 @@ def normalize_database_url(value: str) -> str:
     return value
 
 
+def _env_bool(name: str, default: bool = False) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _env_int(name: str, default: int, minimum: int) -> int:
+    try:
+        value = int(os.getenv(name, str(default)))
+    except ValueError:
+        value = default
+    return max(minimum, value)
+
+
 # SQLite remains the zero-setup local default. Render supplies PostgreSQL via
 # DATABASE_URL and the normalization above selects the installed psycopg driver.
 DATABASE_URL = normalize_database_url(
@@ -65,3 +80,10 @@ RESEND_FROM = os.getenv("RESEND_FROM", "PSXviewAI <onboarding@resend.dev>").stri
 # Stripped to avoid failures from accidental leading/trailing whitespace in .env.
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.5-flash").strip()
+
+# Live economic-news collection is opt-in so tests and local development do not
+# unexpectedly make network requests. The task runs after API startup and keeps
+# the previous good snapshot when a refresh fails.
+NEWS_PIPELINE_ENABLED = _env_bool("NEWS_PIPELINE_ENABLED", False)
+NEWS_PIPELINE_INTERVAL_MINUTES = _env_int("NEWS_PIPELINE_INTERVAL_MINUTES", 60, 15)
+NEWS_PIPELINE_TIMEOUT_SECONDS = _env_int("NEWS_PIPELINE_TIMEOUT_SECONDS", 600, 60)

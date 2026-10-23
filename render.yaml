@@ -27,6 +27,12 @@ services:
         sync: false
       - key: RESEND_FROM
         sync: false
+      - key: NEWS_PIPELINE_ENABLED
+        value: "1"
+      - key: NEWS_PIPELINE_INTERVAL_MINUTES
+        value: "60"
+      - key: NEWS_PIPELINE_TIMEOUT_SECONDS
+        value: "600"
 
 databases:
   - name: psxviewai-db

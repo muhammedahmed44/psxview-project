@@ -5,14 +5,16 @@ Start:
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
+import threading
 import time
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 from data import ANNOUNCEMENTS as MOCK_ANNOUNCEMENTS, SOURCES as MOCK_SOURCES, build_companies
-from news_service import process_pipeline_news
+from news_service import get_pipeline_status, process_pipeline_news, run_pipeline_once
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -57,6 +59,8 @@ _CACHE: Dict[str, Any] = {
 }
 CACHE_TTL = 15 * 60        # seconds: how long company data stays cached
 NEWS_CACHE_TTL = 10 * 60   # seconds: how long news stays cached
+_NEWS_CACHE_LOCK = threading.Lock()
+_pipeline_task: asyncio.Task | None = None
 
 
 def get_companies() -> List[Dict]:
@@ -82,22 +86,47 @@ def get_news() -> Tuple[List[Dict], List[Dict]]:
 
     Falls back to mock data if the pipeline returns no items.
     """
-    now = time.time()
-    if not _CACHE["announcements"] or now - _CACHE["news_ts"] > NEWS_CACHE_TTL:
-        log.info("Refreshing news from economic pipeline …")
-        announcements, sources = process_pipeline_news()
-        if not announcements:
-            log.warning("No pipeline news items loaded; using prototype mock news (source=mock).")
-            announcements, sources = MOCK_ANNOUNCEMENTS, MOCK_SOURCES
-            news_source = "mock"
-        else:
-            news_source = "pipeline"
-        _CACHE["announcements"] = announcements
-        _CACHE["sources"] = sources
-        _CACHE["news_source"] = news_source
-        _CACHE["news_ts"] = now
-        log.info("Loaded %d announcements (source=%s)", len(announcements), news_source)
-    return _CACHE["announcements"], _CACHE["sources"]
+    with _NEWS_CACHE_LOCK:
+        now = time.time()
+        if not _CACHE["announcements"] or now - _CACHE["news_ts"] > NEWS_CACHE_TTL:
+            log.info("Refreshing news from economic pipeline …")
+            announcements, sources = process_pipeline_news()
+            if not announcements:
+                log.warning("No pipeline news items loaded; using prototype mock news (source=mock).")
+                announcements, sources = MOCK_ANNOUNCEMENTS, MOCK_SOURCES
+                news_source = "mock"
+            else:
+                news_source = "pipeline"
+            _CACHE["announcements"] = announcements
+            _CACHE["sources"] = sources
+            _CACHE["news_source"] = news_source
+            _CACHE["news_ts"] = now
+            log.info("Loaded %d announcements (source=%s)", len(announcements), news_source)
+        return _CACHE["announcements"], _CACHE["sources"]
+
+
+def invalidate_news_cache() -> None:
+    """Force the next news read to load the newest pipeline snapshot."""
+    with _NEWS_CACHE_LOCK:
+        _CACHE["news_ts"] = 0.0
+        _CACHE["announcements"] = []
+        _CACHE["sources"] = []
+
+
+async def _news_pipeline_loop() -> None:
+    """Refresh live news without delaying API startup or request handling."""
+    while True:
+        succeeded = await asyncio.to_thread(
+            run_pipeline_once,
+            config.NEWS_PIPELINE_TIMEOUT_SECONDS,
+        )
+        if succeeded:
+            invalidate_news_cache()
+            try:
+                await asyncio.to_thread(get_news)
+            except Exception:
+                log.exception("Failed to load the newly generated news snapshot")
+        await asyncio.sleep(config.NEWS_PIPELINE_INTERVAL_MINUTES * 60)
 
 
 # ---------------------------------------------------------------------------
@@ -113,7 +142,7 @@ async def _warmup():
     Runs init_db() to create tables, then warms both caches in a thread pool.
     Failures are logged but do not crash startup; they retry on the first request.
     """
-    import asyncio
+    global _pipeline_task
     init_db()  # create database tables if they do not exist yet
     loop = asyncio.get_event_loop()
     for fn in (get_companies, get_news):
@@ -121,6 +150,32 @@ async def _warmup():
             await loop.run_in_executor(None, fn)
         except Exception:
             log.exception("Warmup of %s failed; will retry on first request", fn.__name__)
+
+    if config.NEWS_PIPELINE_ENABLED:
+        _pipeline_task = asyncio.create_task(
+            _news_pipeline_loop(),
+            name="economic-news-pipeline",
+        )
+        log.info(
+            "Live news pipeline enabled (interval=%d minutes, timeout=%d seconds)",
+            config.NEWS_PIPELINE_INTERVAL_MINUTES,
+            config.NEWS_PIPELINE_TIMEOUT_SECONDS,
+        )
+    else:
+        log.info("Live news pipeline disabled; set NEWS_PIPELINE_ENABLED=1 to enable it")
+
+
+@app.on_event("shutdown")
+async def _stop_news_pipeline():
+    global _pipeline_task
+    if _pipeline_task is None:
+        return
+    _pipeline_task.cancel()
+    try:
+        await _pipeline_task
+    except asyncio.CancelledError:
+        pass
+    _pipeline_task = None
 
 
 # Include the auth and valuation route modules under their prefixes.
@@ -138,6 +193,7 @@ def health():
 
     Useful for monitoring and confirming the server is alive and data is loaded.
     """
+    pipeline = get_pipeline_status()
     return {
         "status": "ok",
         "cached_at": _CACHE["ts"],
@@ -145,6 +201,11 @@ def health():
         "news_count": len(_CACHE["announcements"]),
         "market_source": _CACHE["market_source"],
         "news_source": _CACHE["news_source"],
+        "news_pipeline": {
+            "enabled": config.NEWS_PIPELINE_ENABLED,
+            "interval_minutes": config.NEWS_PIPELINE_INTERVAL_MINUTES,
+            **pipeline,
+        },
     }
 
 
@@ -175,7 +236,7 @@ def refresh_news():
 
     Returns the number of announcements after refresh.
     """
-    _CACHE["news_ts"] = 0.0
+    invalidate_news_cache()
     ann, src = get_news()
     return {"refreshed": True, "count": len(ann)}
 

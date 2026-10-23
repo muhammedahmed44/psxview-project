@@ -11,9 +11,13 @@ import json
 import logging
 import os
 import re
-from datetime import datetime
+import subprocess
+import sys
+import threading
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
+from zoneinfo import ZoneInfo
 
 log = logging.getLogger("psxviewai.news")
 
@@ -21,6 +25,18 @@ log = logging.getLogger("psxviewai.news")
 BACKEND_DIR = Path(__file__).resolve().parent
 PIPELINE_DIR = BACKEND_DIR / "economic-news-intelligence-pipeline"
 OUTPUT_DIR = PIPELINE_DIR / "output"
+PIPELINE_RUNNER = PIPELINE_DIR / "run_daily_news.py"
+
+_PIPELINE_STATUS_LOCK = threading.Lock()
+_PIPELINE_STATUS: Dict[str, Any] = {
+    "running": False,
+    "last_started_at": None,
+    "last_completed_at": None,
+    "last_success_at": None,
+    "last_target_date": None,
+    "last_item_count": 0,
+    "last_error": None,
+}
 
 # Symbols tracked by the app for news mapping.
 WATCHLIST_SYMBOLS = ["OGDC", "PPL", "MARI", "HBL", "ENGRO", "LUCK", "FFC"]
@@ -319,20 +335,138 @@ def _clean_snippet(raw_text: str) -> str:
 
 
 def load_latest_pipeline_snapshot() -> Optional[Dict[str, Any]]:
-    """Find and read the latest snapshot file from the pipeline output directory."""
+    """Read the newest non-empty pipeline snapshot, if one exists."""
     if not OUTPUT_DIR.exists():
         return None
     snapshots = sorted(OUTPUT_DIR.glob("*_snapshot.json"), reverse=True)
     if not snapshots:
         return None
-    latest_file = snapshots[0]
-    log.info("Loading latest news snapshot from %s", latest_file.name)
+    for snapshot_file in snapshots:
+        try:
+            with open(snapshot_file, "r", encoding="utf-8") as f:
+                snapshot = json.load(f)
+            item_count = len(snapshot.get("domestic_items", [])) + len(
+                snapshot.get("international_items", [])
+            )
+            if item_count:
+                log.info("Loading news snapshot %s (%d items)", snapshot_file.name, item_count)
+                return snapshot
+            log.warning("Ignoring empty news snapshot %s", snapshot_file.name)
+        except Exception as e:
+            log.error("Failed to read snapshot %s: %s", snapshot_file, e)
+    return None
+
+
+def get_pipeline_status() -> Dict[str, Any]:
+    """Return a thread-safe copy of the live collector's runtime status."""
+    with _PIPELINE_STATUS_LOCK:
+        return dict(_PIPELINE_STATUS)
+
+
+def _set_pipeline_status(**updates: Any) -> None:
+    with _PIPELINE_STATUS_LOCK:
+        _PIPELINE_STATUS.update(updates)
+
+
+def _snapshot_count_for_date(target_date: str) -> int:
+    snapshot_path = OUTPUT_DIR / f"{target_date}_snapshot.json"
     try:
-        with open(latest_file, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception as e:
-        log.error("Failed to read snapshot %s: %s", latest_file, e)
-        return None
+        snapshot = json.loads(snapshot_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError, TypeError):
+        return 0
+    return len(snapshot.get("domestic_items", [])) + len(snapshot.get("international_items", []))
+
+
+def run_pipeline_once(timeout_seconds: int = 600) -> bool:
+    """Collect today's news in a child process, falling back to yesterday.
+
+    The child process isolates collector failures from FastAPI. A non-empty
+    snapshot is required before this function reports success.
+    """
+    if not PIPELINE_RUNNER.is_file():
+        error = f"Pipeline runner not found: {PIPELINE_RUNNER}"
+        log.error(error)
+        _set_pipeline_status(last_error=error)
+        return False
+
+    started_at = datetime.now(timezone.utc).isoformat()
+    _set_pipeline_status(running=True, last_started_at=started_at, last_error=None)
+    local_today = datetime.now(ZoneInfo("Asia/Karachi")).date()
+    target_dates = [local_today, local_today - timedelta(days=1)]
+    last_error = "Pipeline produced no usable news items"
+
+    try:
+        for target_date in target_dates:
+            target_date_text = target_date.isoformat()
+            env = os.environ.copy()
+            env.update(
+                {
+                    "TEMP_OUTPUT_DIR": str(OUTPUT_DIR),
+                    "OUTPUT_DIR": str(PIPELINE_DIR / "output" / "reports"),
+                    "LOG_FILE": str(PIPELINE_DIR / "logs" / "daily_news.log"),
+                    "PYTHONUNBUFFERED": "1",
+                }
+            )
+            command = [
+                sys.executable,
+                str(PIPELINE_RUNNER),
+                "--date",
+                target_date_text,
+                "--dry-run",
+            ]
+            log.info("Running economic-news pipeline for %s", target_date_text)
+            try:
+                result = subprocess.run(
+                    command,
+                    cwd=str(PIPELINE_DIR),
+                    env=env,
+                    capture_output=True,
+                    text=True,
+                    encoding="utf-8",
+                    errors="replace",
+                    timeout=timeout_seconds,
+                    check=False,
+                )
+            except subprocess.TimeoutExpired:
+                last_error = f"Pipeline timed out after {timeout_seconds} seconds"
+                log.error(last_error)
+                break
+
+            item_count = _snapshot_count_for_date(target_date_text)
+            if result.returncode == 0 and item_count > 0:
+                completed_at = datetime.now(timezone.utc).isoformat()
+                _set_pipeline_status(
+                    running=False,
+                    last_completed_at=completed_at,
+                    last_success_at=completed_at,
+                    last_target_date=target_date_text,
+                    last_item_count=item_count,
+                    last_error=None,
+                )
+                log.info(
+                    "Economic-news pipeline completed for %s with %d items",
+                    target_date_text,
+                    item_count,
+                )
+                return True
+
+            output_tail = (result.stderr or result.stdout or "").strip()[-4000:]
+            last_error = f"Pipeline exited with code {result.returncode} for {target_date_text}"
+            if result.returncode == 2:
+                log.warning("No usable news for %s; trying the previous day", target_date_text)
+                continue
+            log.error("%s%s", last_error, f": {output_tail}" if output_tail else "")
+            break
+    except Exception as exc:
+        last_error = f"Pipeline execution failed: {exc}"
+        log.exception("Economic-news pipeline execution failed")
+
+    _set_pipeline_status(
+        running=False,
+        last_completed_at=datetime.now(timezone.utc).isoformat(),
+        last_error=last_error,
+    )
+    return False
 
 
 def process_pipeline_news() -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:

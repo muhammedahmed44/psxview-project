@@ -75,8 +75,8 @@ class DateFilteringTests(unittest.TestCase):
 
     def test_domestic_story_keeps_domestic_search_slot_when_anchor_present(self) -> None:
         items = [{
-            "title": "People's Bank of China announces yuan liquidity support measures",
-            "summary": "PBOC adjusts domestic funding conditions as banks respond to credit demand.",
+            "title": "State Bank of Pakistan announces rupee liquidity support measures",
+            "summary": "SBP adjusts domestic funding conditions as banks respond to credit demand.",
             "url": "https://example.com/domestic-story",
             "published_date": "2026-08-09",
             "section": "domestic",
