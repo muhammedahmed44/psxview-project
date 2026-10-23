@@ -81,9 +81,13 @@ RESEND_FROM = os.getenv("RESEND_FROM", "PSXviewAI <onboarding@resend.dev>").stri
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.5-flash").strip()
 
-# Live economic-news collection is opt-in so tests and local development do not
-# unexpectedly make network requests. The task runs after API startup and keeps
-# the previous good snapshot when a refresh fails.
-NEWS_PIPELINE_ENABLED = _env_bool("NEWS_PIPELINE_ENABLED", False)
+# Live collection stays off by default during tests and local development. The
+# task runs after API startup and keeps the previous good snapshot on failure.
+# Render always injects RENDER=true. Enable there by default so manually created
+# services work without Blueprint env syncing; an explicit 0 still disables it.
+NEWS_PIPELINE_ENABLED = _env_bool(
+    "NEWS_PIPELINE_ENABLED",
+    _env_bool("RENDER", False),
+)
 NEWS_PIPELINE_INTERVAL_MINUTES = _env_int("NEWS_PIPELINE_INTERVAL_MINUTES", 60, 15)
 NEWS_PIPELINE_TIMEOUT_SECONDS = _env_int("NEWS_PIPELINE_TIMEOUT_SECONDS", 600, 60)
