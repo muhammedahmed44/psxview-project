@@ -17,9 +17,9 @@ from typing import Any, Dict, List, Optional, Tuple
 
 log = logging.getLogger("psxviewai.news")
 
-# Paths to the sibling pipeline directory and its output snapshots.
-BASE_DIR = Path(__file__).resolve().parent.parent
-PIPELINE_DIR = BASE_DIR / "economic-news-intelligence-pipeline"
+# Paths to the pipeline bundled inside the backend service and its snapshots.
+BACKEND_DIR = Path(__file__).resolve().parent
+PIPELINE_DIR = BACKEND_DIR / "economic-news-intelligence-pipeline"
 OUTPUT_DIR = PIPELINE_DIR / "output"
 
 # Symbols tracked by the app for news mapping.
